@@ -21,22 +21,6 @@ class GUI(object):
     def __init__(self):
         self.term = Terminal()
 
-        # TODO: Fix setting up fullscreen so that the terminal gets back to its
-        # old self when quitting the game. I just have to understand the contex
-        # of `with` first...
-        #with term.fullscreen():
-        #    print(term.home + term.on_black + term.clear)  
-        #    gui_splashscreen(term)
-        #    gui_startmenu(term)
-
-
-    # TODO: Isn't in use, but is keept to remember if I do the `with` wrong...
-    def _start(self):
-        """Start the view in the terminal, and get to main menu."""
-        with self.term.fullscreen():
-            self.show_splashscreen()
-            self.start_mainmenu()
-
 
     def fullscreen(self):
         return self.term.fullscreen()
@@ -55,7 +39,7 @@ class GUI(object):
 
         # Press any key...
         with self.term.cbreak(), self.term.hidden_cursor():
-            inp = self.term.inkey()
+            self.term.inkey()
 
 
     def start_mainmenu(self, choices):

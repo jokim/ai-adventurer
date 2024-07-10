@@ -25,7 +25,7 @@ class Game(object):
             self.gui.show_splashscreen()
             choice = self.gui.start_mainmenu(choices)
 
-        # Call function for next step
+        # Call function for next step. Might there be a better way to do this?
         choices[choice][1]()
 
 
