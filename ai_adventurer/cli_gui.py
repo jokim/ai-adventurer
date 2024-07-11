@@ -38,7 +38,7 @@ class GUI(object):
         print(self.term.center("Your own adventures, from your imagination"))
 
         # Press any key...
-        input = self._get_keyinput()
+        input = self.get_keyinput()
 
         #print("you chose: '" + inp + "'")
         #print("type: '" + str(type(inp)) + "'")
@@ -46,35 +46,13 @@ class GUI(object):
         #time.sleep(2)
 
 
-    def _get_keyinput(self):
+    def get_keyinput(self):
         """Shortcut for waiting for user key input."""
         with self.term.cbreak(), self.term.hidden_cursor():
             return self.term.inkey()
 
-    def start_mainmenu(self, choices):
-        """Display a menu, and returns the users choice.
 
-        Invalid choices are retried from the user.
-
-        @param choices: 
-            A dict, where the key is the keyboard input for the choice. The
-            value is a dict, with first element is an english title for the
-            choice. The rest is ignored.
-
-        @return: The users choice, i.e. the chosen key from the dict.
-
-        """
-        while True:
-            self._print_mainmenu(choices)
-            inp = self._get_keyinput()
-            if inp in choices:
-                return inp
-            else:
-                print(self.term.red("You chose badly (invalid): " + inp))
-                time.sleep(0.4)
-
-
-    def _print_mainmenu(self, choices):
+    def print_mainmenu(self, choices):
         print(self.term.home + self.term.on_black + self.term.clear)  
         print(self.term.move_down(2))
         for key, options in choices.items():
@@ -83,12 +61,18 @@ class GUI(object):
         print("Choose wisely!")
 
 
-    def start_gameroom(self, choices, lines=[]):
+    def start_gameroom(self, choices, lines=[], status=''):
         """Show the initial GUI for when in a game"""
         self._choices = choices
-        self.print_screen()
+        self._lines = lines
+        self.print_screen(status=status)
 
-        self._get_keyinput()
+
+    def send_message(self, message):
+        """Send a message to the status field on the screen"""
+        print(self.term.move_xy(1, self.term.height - 3), end='')
+        #print(self.term.clear, end='')
+        print(self.term.ljust(message, width=self.term.width - 1, fillchar=' '), end='')
 
 
     def print_screen(self, status=""):
@@ -99,6 +83,13 @@ class GUI(object):
         print(self.term.home + self.term.on_black + self.term.clear, end='')
         print(self.term.center(self.term.green_bold("AI adventurer")))
         print(self.term.darkgrey('-' * self.term.width))
+
+        # Main content
+        # TODO: Fix all the lines properly, but just print them dumbly for now
+        for line in self._lines:
+            for l in self.term.wrap(line):
+                # TODO: add focus icon here, later
+                print("  " + l)
 
         # Footer
         print(self.term.move_xy(0, self.term.height - 4), end='')
