@@ -1,10 +1,14 @@
 #!/usr/bin/env python
 
+import argparse
 import logging
 import time
 
 import cli_gui
 import nlp
+
+
+logger = logging.getLogger(__name__)
 
 
 class Game(object):
@@ -128,10 +132,24 @@ class Game(object):
 
 
 def main():
-    logging.debug("Starting game")
+    parser = argparse.ArgumentParser(
+        description='Run the AI adventurer game in the terminal'
+    )
+    parser.add_argument('-d', '--debug', action='store_true', 
+                        help='Log debug data to file, for development')
+    args = parser.parse_args()
+
+    if args.debug:
+        logging.basicConfig(filename='logger.log', encoding='utf-8',
+                            level=logging.DEBUG)
+    else:
+        logging.basicConfig(filename='logger.log', encoding='utf-8',
+                            level=logging.WARNING)
+
+    logger.debug("Starting game")
     game = Game()
     game.run()
-    logging.debug("Stopping game")
+    logger.debug("Stopping game")
 
 
 if __name__ == '__main__':
