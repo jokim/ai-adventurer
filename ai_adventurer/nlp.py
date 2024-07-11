@@ -9,6 +9,8 @@ import time
 #import keras_nlp
 import keras
 
+logger = logging.getLogger(__name__)
+
 default_model = 'data/gpt2base.keras'
 
 
@@ -31,10 +33,17 @@ class NLP(object):
     def generate(self, pretext=""):
         """Return a generated sentence."""
         if isinstance(pretext, (tuple, list)):
-            pretext = '\n'.join(pretext)
+            pretext = '\n'.join(pretext).strip()
+        if not pretext:
+            pretext = self.start_prompt + " " + pretext
+        logger.debug("Generating with prompt: '%s'", pretext)
+
         start = time.time()
-        output = self.model.generate(' '.join((self.start_prompt, pretext)),
-                                     max_length=20)
+        output = self.model.generate(
+                        pretext,
+                        max_length=min(1024, len(pretext) + 200)
+        ).strip()
         end = time.time()
-        logging.debug(f"TOTAL TIME ELAPSED: {end - start:.2f}s")
-        return output
+        logger.debug("Returned answer: %s", output)
+        logger.debug("Time elapsed: %.2f", end - start)
+        return output.strip()
