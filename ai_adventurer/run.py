@@ -25,13 +25,40 @@ class Game(object):
             self.gui.show_splashscreen()
             choice = self.gui.start_mainmenu(choices)
 
-        # Call function for next step. Might there be a better way to do this?
-        choices[choice][1]()
+            print("chose: " + choice)
+            # Call function for next step. Might there be a better way to do this?
+            choices[choice][1]()
 
 
     def start_new_game(self):
         print("New game!")
+        choices = {
+            'j': ("Up", self.shift_focus_up),
+            'k': ("Down", self.shift_focus_down),
+            'r': ("Retry", self.retry),
+            'e': ("Edit", self.edit_line),
+            'KEY_ENTER': ('Next', self.next_line),
+        }
 
+        # TODO: Get an initial line?
+
+        self.gui.start_gameroom(choices=choices, lines=[])
+
+
+    def next_line(self):
+        pass
+
+    def shift_focus_up(self):
+        pass
+
+    def shift_focus_down(self):
+        pass
+
+    def retry(self):
+        pass
+
+    def edit_line(self):
+        pass
 
     def quit(self):
         print("Quitter...")

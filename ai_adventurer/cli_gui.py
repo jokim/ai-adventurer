@@ -38,9 +38,18 @@ class GUI(object):
         print(self.term.center("Your own adventures, from your imagination"))
 
         # Press any key...
-        with self.term.cbreak(), self.term.hidden_cursor():
-            self.term.inkey()
+        input = self._get_keyinput()
 
+        #print("you chose: '" + inp + "'")
+        #print("type: '" + str(type(inp)) + "'")
+        #print("repr: '" + str(repr(inp)) + "'")
+        #time.sleep(2)
+
+
+    def _get_keyinput(self):
+        """Shortcut for waiting for user key input."""
+        with self.term.cbreak(), self.term.hidden_cursor():
+            return self.term.inkey()
 
     def start_mainmenu(self, choices):
         """Display a menu, and returns the users choice.
@@ -57,8 +66,7 @@ class GUI(object):
         """
         while True:
             self._print_mainmenu(choices)
-            with self.term.cbreak(), self.term.hidden_cursor():
-                inp = self.term.inkey()
+            inp = self._get_keyinput()
             if inp in choices:
                 return inp
             else:
@@ -75,6 +83,31 @@ class GUI(object):
         print("Choose wisely!")
 
 
-    # TODO: test key input!
-    # Enter key-at-a-time input mode using Terminal.cbreak() or Terminal.raw()
-    # context managers, and read timed key presses using Terminal.inkey().
+    def start_gameroom(self, choices, lines=[]):
+        """Show the initial GUI for when in a game"""
+        self._choices = choices
+        self.print_screen()
+
+        self._get_keyinput()
+
+
+    def print_screen(self, status=""):
+        """Print the game screen, with all details."""
+        # Note: Smaller screens haven't been tested or adjusted for yet
+
+        # Header
+        print(self.term.home + self.term.on_black + self.term.clear, end='')
+        print(self.term.center(self.term.green_bold("AI adventurer")))
+        print(self.term.darkgrey('-' * self.term.width))
+
+        # Footer
+        print(self.term.move_xy(0, self.term.height - 4), end='')
+        # status line
+        print(self.term.darkgrey('-' * self.term.width))
+        print(' ' + status)
+        print(self.term.darkgrey('-' * self.term.width))
+        submenu = []
+        for key, data in self._choices.items():
+            submenu.append(f'[{self.term.bold}{key}{self.term.normal}] {data[0]}')
+
+        print(' ' + ' '.join(submenu), end='')
