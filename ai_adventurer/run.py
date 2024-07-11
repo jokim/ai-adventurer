@@ -135,7 +135,7 @@ def main():
     parser = argparse.ArgumentParser(
         description='Run the AI adventurer game in the terminal'
     )
-    parser.add_argument('-d', '--debug', action='store_true', 
+    parser.add_argument('-d', '--debug', action='store_true',
                         help='Log debug data to file, for development')
     args = parser.parse_args()
 
