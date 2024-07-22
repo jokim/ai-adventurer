@@ -5,10 +5,12 @@ Making use of `blessed` to have a more fancy CLI.
 
 """
 
+import logging
 import time
 
 from blessed import Terminal
 
+logger = logging.getLogger(__name__)
 
 class GUI(object):
     """The main GUI of the game.
@@ -22,7 +24,7 @@ class GUI(object):
         self.term = Terminal()
 
 
-    def fullscreen(self):
+    def activate(self):
         return self.term.fullscreen()
 
 
@@ -38,7 +40,7 @@ class GUI(object):
         print(self.term.center("Your own adventures, from your imagination"))
 
         # Press any key...
-        input = self.get_keyinput()
+        #input = self.get_keyinput()
 
         #print("you chose: '" + inp + "'")
         #print("type: '" + str(type(inp)) + "'")
@@ -50,6 +52,15 @@ class GUI(object):
         """Shortcut for waiting for user key input."""
         with self.term.cbreak(), self.term.hidden_cursor():
             return self.term.inkey()
+
+
+    def edit_last_line(self):
+        """Edit the last line, changing the story."""
+        # TODO: fix this better! Just asking for input now...
+        print(self.term.move_xy(0, self.term.height - 2) + self.term.clear_eol, end='')
+        newline = input("Change last line to: ").strip()
+        self._lines[-1] = newline
+        return newline
 
 
     def print_mainmenu(self, choices):
@@ -65,13 +76,13 @@ class GUI(object):
         """Show the initial GUI for when in a game"""
         self._choices = choices
         self._lines = lines
+        self._linefocus = -1
         self.print_screen(status=status)
 
 
     def send_message(self, message):
         """Send a message to the status field on the screen"""
         print(self.term.move_xy(1, self.term.height - 3), end='')
-        #print(self.term.clear, end='')
         print(self.term.ljust(message, width=self.term.width - 1, fillchar=' '), end='')
 
 
@@ -86,10 +97,11 @@ class GUI(object):
 
         # Main content
         # TODO: Fix all the lines properly, but just print them dumbly for now
-        for line in self._lines:
-            for l in self.term.wrap(line):
-                # TODO: add focus icon here, later
-                print("  " + l)
+        self.print_content(self._lines)
+        #for line in self._lines:
+        #    for l in self.term.wrap(line):
+        #        # TODO: add focus icon here, later
+        #        print("  " + l)
 
         # Footer
         print(self.term.move_xy(0, self.term.height - 4), end='')
@@ -102,3 +114,35 @@ class GUI(object):
             submenu.append(f'[{self.term.bold}{key}{self.term.normal}] {data[0]}')
 
         print(' ' + ' '.join(submenu), end='')
+
+
+    def print_content(self, lines):
+        """Fill the main content area with the last lines"""
+        y_min = 2
+        y_max = self.term.height - 5
+        y_pos = y_max
+
+        # Start at the bottom and work upwards
+        print(self.term.move_xy(0, y_pos), end='')
+
+        # Focus defaults to -1, which is the last line
+        if self._linefocus == -1:
+            self._linefocus = len(lines) - 1
+
+        i = len(lines) - 1
+        while i >= 0:
+            line = lines[i]
+            rows = self.term.wrap(line, width=self.term.width - 10)
+            for row in reversed(rows):
+                if i == self._linefocus:
+                    print(self.term.standout, end='')
+                print('%3d   ' % i, end='')
+                print(row, end='')
+                print(self.term.normal, end='')
+
+                y_pos -= 1
+                if y_pos <= y_min:
+                    return
+                print(self.term.move_xy(0, y_pos), end='')
+
+            i -= 1
