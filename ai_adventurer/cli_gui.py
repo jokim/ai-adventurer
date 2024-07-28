@@ -86,6 +86,35 @@ class GUI(object):
         print(self.term.ljust(message, width=self.term.width - 1, fillchar=' '), end='')
 
 
+    def set_focus_up(self):
+        """Move focus up one line"""
+        if self._linefocus == -1:
+            # move up to next last
+            self._linefocus = len(self._lines) - 2
+        elif self._linefocus == 0:
+            # you are already at the top
+            pass
+        else:
+            self._linefocus -= 1
+
+        # in case of bugs
+        if self._linefocus < -2:
+            self._linefocus = 0
+
+
+    def set_focus_down(self):
+        """Move focus up one line"""
+        if self._linefocus == -1:
+            # keep at bottom
+            self._linefocus = -1
+        else:
+            self._linefocus += 1
+
+        # If trying to pass the last line
+        if self._linefocus > len(self._lines) - 1:
+            self._linefocus = len(self._lines) -1
+
+
     def print_screen(self, status=""):
         """Print the game screen, with all details."""
         # Note: Smaller screens haven't been tested or adjusted for yet
@@ -132,7 +161,7 @@ class GUI(object):
         i = len(lines) - 1
         while i >= 0:
             line = lines[i]
-            rows = self.term.wrap(line, width=self.term.width - 10)
+            rows = self.term.wrap(line, width=min(self.term.width - 10, 120))
             for row in reversed(rows):
                 if i == self._linefocus:
                     print(self.term.standout, end='')
@@ -146,3 +175,5 @@ class GUI(object):
                 print(self.term.move_xy(0, y_pos), end='')
 
             i -= 1
+
+        # TODO: add an indicator, viewing that you are not at the bottom
