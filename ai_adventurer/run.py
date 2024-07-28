@@ -27,6 +27,8 @@ class GameController(object):
             'k': ("Up", self.shift_focus_up),
             'r': ("Retry", self.retry),
             'e': ("Edit", self.edit_line),
+            'd': ("Delete", self.delete_last_line),
+            'a': ("Add", self.add_line),
             'q': ("Quit", self.quit_game),
             'KEY_ENTER': ('Next', self.next_line),
         }
@@ -62,9 +64,9 @@ class GameController(object):
 
 
     def start_new_game(self):
-        nlp_thread = nlp.OpenAINLPThread()
+        #nlp_thread = nlp.OpenAINLPThread()
         #nlp_thread = nlp.LocalNLPThread()
-        #nlp_thread = nlp.GeminiNLPThread()
+        nlp_thread = nlp.GeminiNLPThread()
         #nlp_thread = nlp.MockNLPThread()
 
         self.game = Game(db=self.db, nlp=nlp_thread)
@@ -142,6 +144,20 @@ class GameController(object):
         self.gui.print_screen('Last line updated')
 
 
+    def add_line(self):
+        """Write a new line/response"""
+        newline = self.gui.get_line_input()
+        self.game.add_lines(newline)
+        self.gui._lines = self.game.lines
+        self.gui.print_screen()
+
+    def delete_last_line(self):
+        """Delete last line/response"""
+        self.game.delete_last_line()
+        self.gui._lines = self.game.lines
+        self.gui.print_screen('Deleted last line')
+
+
     def quit_game(self):
         self.gui.send_message("Quit this game")
         self.game.save()
@@ -207,14 +223,17 @@ class Game(object):
         return more
 
 
-    def retry_last_line(self):
+    def delete_last_line(self):
         del self.lines[-1]
+
+
+    def retry_last_line(self):
+        self.delete_last_line()
         return self.generate_next_lines()
 
 
     def change_last_line(self, new_text):
         self.lines[-1] = new_text
-
 
 
 def main():

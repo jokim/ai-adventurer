@@ -63,6 +63,13 @@ class GUI(object):
         return newline
 
 
+    def get_line_input(self):
+        """Ask the user to write a line."""
+        print(self.term.move_xy(0, self.term.height - 2) + self.term.clear_eol, end='')
+        newline = input("Add a new line: ").strip()
+        return newline
+
+
     def print_mainmenu(self, choices):
         print(self.term.home + self.term.on_black + self.term.clear)  
         print(self.term.move_down(2))
