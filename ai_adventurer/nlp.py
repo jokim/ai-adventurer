@@ -47,11 +47,11 @@ class MockNLPThread(NLPThread):
         )
 
     def __init__(self):
-        import random
         super().__init__()
 
 
     def prompt(self, text=None):
+        import random
         response = random.choice(self.replies)
         return response
 
@@ -64,8 +64,8 @@ class LocalNLPThread(NLPThread):
     """
 
     def __init__(self, nlp_file=None):
-        #import keras_nlp
         import keras
+        #import keras_nlp
 
         super().__init__()
 
@@ -75,6 +75,7 @@ class LocalNLPThread(NLPThread):
 
 
     def _load_model(self, nlp_file):
+        import keras
         model = keras.saving.load_model(nlp_file, compile=True)
         return model
 
