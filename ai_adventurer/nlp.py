@@ -120,10 +120,15 @@ class OpenAINLPThread(NLPThread):
 
 
     def prompt(self, text):
+        # Reformat the prompt to follow OpenAIs specs:
+        new_text = []
+        for t in text:
+            new_text.append({'role': 'user', 'content': t})
+
         # TODO: make use of the stream functionality?
         answer = self.client.chat.completions.create(
                     model=self.openai_model,
-                    messages=text,
+                    messages=new_text,
                     stream=False,
         )
         return answer.choices[0].message.content
