@@ -27,7 +27,7 @@ class GameController(object):
             'k': ("Up", self.shift_focus_up),
             'r': ("Retry", self.retry),
             'e': ("Edit", self.edit_line),
-            'd': ("Delete", self.delete_last_line),
+            'd': ("Delete", self.delete_active_line),
             'a': ("Add", self.add_line),
             'q': ("Quit", self.quit_game),
             'KEY_ENTER': ('Next', self.next_line),
@@ -119,24 +119,27 @@ class GameController(object):
 
 
     def shift_focus_up(self):
-        self.gui.set_focus_up()
+        self.game.set_focus_up()
         self.gui.print_screen()
+
 
     def shift_focus_down(self):
-        self.gui.set_focus_down()
+        self.game.set_focus_down()
         self.gui.print_screen()
 
+
     def retry(self):
-        """Retry last generation"""
-        self.gui.send_message("Retry last text")
-        self.game.retry_last_line()
+        """Regenerate chosen line"""
+        self.gui.send_message("Retry selected text")
+        self.game.retry_active_line()
         self.gui.print_screen("New text generated")
 
 
     def edit_line(self):
-        """Edit last line/response"""
-        newline = self.gui.edit_last_line()
-        self.game.change_last_line(newline)
+        """Edit chosen line/response"""
+        _, oldline = self.game.get_active_line()
+        newline = self.gui.edit_line(oldline)
+        self.game.change_active_line(newline)
         self.gui.print_screen('Last line updated')
 
 
@@ -146,10 +149,10 @@ class GameController(object):
         self.game.add_lines(newline)
         self.gui.print_screen()
 
-    def delete_last_line(self):
-        """Delete last line/response"""
-        self.game.delete_last_line()
-        self.gui.print_screen('Deleted last line')
+    def delete_active_line(self):
+        """Delete chosen line/response"""
+        self.game.delete_active_line()
+        self.gui.print_screen('Line deleted')
 
 
     def quit_game(self):
@@ -170,6 +173,7 @@ class Game(object):
         # TODO: How to manage a separation between the story and instructions?
         self.lines = []
         self.gameid = db.get_next_id()
+        self.focus = None
 
 
     def save(self):
@@ -192,10 +196,16 @@ class Game(object):
         self.db.save_game(self)
 
 
+    def get_active_line(self):
+        return (self.focus, self.lines[self.focus])
+
+
     def add_lines(self, text):
         """Add text to continue the story."""
         text = self.cleanup_text(text)
         self.lines.append(text)
+        # Set focus to the new line. Not sure if that is intuitive?
+        self.focus = len(self.lines) - 1
         self.db.add_lines(self.gameid, text)
 
 
@@ -217,17 +227,62 @@ class Game(object):
         return more
 
 
-    def delete_last_line(self):
-        del self.lines[-1]
+    def delete_line(self, lineid):
+        del self.lines[lineid]
+        self.set_focus_up()
 
 
-    def retry_last_line(self):
-        self.delete_last_line()
-        return self.generate_next_lines()
+    def delete_active_line(self):
+        return self.delete_line(self.focus)
 
 
-    def change_last_line(self, new_text):
-        self.lines[-1] = new_text
+    def retry_active_line(self):
+        if self.focus is None or self.focus == len(self.lines) -1:
+            # Only support retrying last line for now. Haven't implemented
+            # changing inside of the chain yet.
+            self.delete_active_line()
+            return self.generate_next_lines()
+        else:
+            print("Can't retry inside, per now")
+            logger.warning("Can't retry inside chain, per now")
+
+
+    def change_active_line(self, new_text):
+        self.lines[self.focus] = new_text
+
+
+    def set_focus_up(self):
+        """Move focus up one line.
+
+        "Up" is here upwards in the list, that is counting down to 0. 0 is at
+        the top.
+
+        """
+        if self.focus == -1:
+            # move up to next last
+            self.focus = len(self.lines) - 2
+        elif self.focus == 0:
+            # you are already at the top
+            return
+        else:
+            self.focus -= 1
+
+        # in case of bugs
+        if self.focus < -2:
+            self.focus = 0
+
+
+    def set_focus_down(self):
+        """Move focus up one line"""
+        if self.focus == -1:
+            # keep at bottom
+            self.focus = len(self.lines) - 1
+        else:
+            self.focus += 1
+
+        # If trying to pass the last line
+        if self.focus > len(self.lines) - 1:
+            self.focus = len(self.lines) - 1
 
 
 def main():

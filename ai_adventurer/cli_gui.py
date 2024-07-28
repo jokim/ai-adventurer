@@ -54,8 +54,8 @@ class GUI(object):
             return self.term.inkey()
 
 
-    def edit_last_line(self):
-        """Edit the last line, changing the story."""
+    def edit_line(self, old_text):
+        """Ask user to edit given text and return the new one."""
         # TODO: fix this better! Just asking for input now...
         print(self.term.move_xy(0, self.term.height - 2) + self.term.clear_eol, end='')
         newline = input("Change last line to: ").strip()
@@ -82,7 +82,6 @@ class GUI(object):
         """Show the initial GUI for when in a game"""
         self._choices = choices
         self._game = game
-        self._linefocus = -1
         self.print_screen(status=status)
 
 
@@ -90,35 +89,6 @@ class GUI(object):
         """Send a message to the status field on the screen"""
         print(self.term.move_xy(1, self.term.height - 3), end='')
         print(self.term.ljust(message, width=self.term.width - 1, fillchar=' '), end='')
-
-
-    def set_focus_up(self):
-        """Move focus up one line"""
-        if self._linefocus == -1:
-            # move up to next last
-            self._linefocus = len(self._game.lines) - 2
-        elif self._linefocus == 0:
-            # you are already at the top
-            pass
-        else:
-            self._linefocus -= 1
-
-        # in case of bugs
-        if self._linefocus < -2:
-            self._linefocus = 0
-
-
-    def set_focus_down(self):
-        """Move focus up one line"""
-        if self._linefocus == -1:
-            # keep at bottom
-            self._linefocus = -1
-        else:
-            self._linefocus += 1
-
-        # If trying to pass the last line
-        if self._linefocus > len(self._game.lines) - 1:
-            self._linefocus = len(self._game.lines) -1
 
 
     def print_screen(self, status=""):
@@ -132,7 +102,7 @@ class GUI(object):
 
         # Main content
         # TODO: Fix all the lines properly, but just print them dumbly for now
-        self.print_content(self._game.lines)
+        self.print_content(self._game.lines, self._game.focus)
 
         # Footer
         print(self.term.move_xy(0, self.term.height - 4), end='')
@@ -147,7 +117,7 @@ class GUI(object):
         print(' ' + ' '.join(submenu), end='')
 
 
-    def print_content(self, lines):
+    def print_content(self, lines, focus):
         """Fill the main content area with the last lines"""
         y_min = 2
         y_max = self.term.height - 5
@@ -157,15 +127,15 @@ class GUI(object):
         print(self.term.move_xy(0, y_pos), end='')
 
         # Focus defaults to -1, which is the last line
-        if self._linefocus == -1:
-            self._linefocus = len(lines) - 1
+        if focus == -1:
+            focus = len(lines) - 1
 
         i = len(lines) - 1
         while i >= 0:
             line = lines[i]
             rows = self.term.wrap(line, width=min(self.term.width - 10, 120))
             for row in reversed(rows):
-                if i == self._linefocus:
+                if i == focus:
                     print(self.term.standout, end='')
                 print('%3d   ' % i, end='')
                 print(row, end='')
