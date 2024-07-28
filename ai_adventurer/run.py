@@ -2,6 +2,7 @@
 
 import argparse
 import logging
+import re
 import time
 
 import cli_gui
@@ -61,9 +62,9 @@ class GameController(object):
 
 
     def start_new_game(self):
-        #nlp_thread = nlp.OpenAINLPThread()
+        nlp_thread = nlp.OpenAINLPThread()
         #nlp_thread = nlp.LocalNLPThread()
-        nlp_thread = nlp.GeminiNLPThread()
+        #nlp_thread = nlp.GeminiNLPThread()
         #nlp_thread = nlp.MockNLPThread()
 
         self.game = Game(db=self.db, nlp=nlp_thread)
@@ -165,14 +166,25 @@ class Game(object):
         self.db.save_game(self)
 
 
+    @staticmethod
+    def cleanup_text(text):
+        """Remove some unncessary whitespace"""
+        # Replace multiple newlines with at most two
+        text = re.sub(r'\n{3,}', '\n\n', text)
+        # Replace multiple spaces with a single space
+        text = re.sub(r'\s+', ' ', text)
+        return text
+
+
     def set_instructions(self, text):
         """Set the instructions for the NLP generations."""
-        self.instructions = text
+        self.instructions = self.cleanup_text(text)
         self.db.save_game(self)
 
 
     def add_lines(self, text):
         """Add text to continue the story."""
+        text = self.cleanup_text(text)
         self.lines.append(text)
         self.db.add_lines(self.gameid, text)
 
@@ -186,7 +198,7 @@ class Game(object):
             prompt.append(text)
 
         # TODO: check if all APIs support lists of just text
-        return self.nlp.prompt(prompt)
+        return self.cleanup_text(self.nlp.prompt(prompt))
 
 
     def generate_next_lines(self, instructions=None):
