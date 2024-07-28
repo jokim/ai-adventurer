@@ -59,7 +59,6 @@ class GUI(object):
         # TODO: fix this better! Just asking for input now...
         print(self.term.move_xy(0, self.term.height - 2) + self.term.clear_eol, end='')
         newline = input("Change last line to: ").strip()
-        self._lines[-1] = newline
         return newline
 
 
@@ -79,10 +78,10 @@ class GUI(object):
         print("Choose wisely!")
 
 
-    def start_gameroom(self, choices, lines=[], status=''):
+    def start_gameroom(self, choices, game, status=''):
         """Show the initial GUI for when in a game"""
         self._choices = choices
-        self._lines = lines
+        self._game = game
         self._linefocus = -1
         self.print_screen(status=status)
 
@@ -97,7 +96,7 @@ class GUI(object):
         """Move focus up one line"""
         if self._linefocus == -1:
             # move up to next last
-            self._linefocus = len(self._lines) - 2
+            self._linefocus = len(self._game.lines) - 2
         elif self._linefocus == 0:
             # you are already at the top
             pass
@@ -118,8 +117,8 @@ class GUI(object):
             self._linefocus += 1
 
         # If trying to pass the last line
-        if self._linefocus > len(self._lines) - 1:
-            self._linefocus = len(self._lines) -1
+        if self._linefocus > len(self._game.lines) - 1:
+            self._linefocus = len(self._game.lines) -1
 
 
     def print_screen(self, status=""):
@@ -133,11 +132,7 @@ class GUI(object):
 
         # Main content
         # TODO: Fix all the lines properly, but just print them dumbly for now
-        self.print_content(self._lines)
-        #for line in self._lines:
-        #    for l in self.term.wrap(line):
-        #        # TODO: add focus icon here, later
-        #        print("  " + l)
+        self.print_content(self._game.lines)
 
         # Footer
         print(self.term.move_xy(0, self.term.height - 4), end='')

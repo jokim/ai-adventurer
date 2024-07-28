@@ -72,7 +72,7 @@ class GameController(object):
         self.game = Game(db=self.db, nlp=nlp_thread)
         print("New game!")
 
-        self.gui.start_gameroom(choices=self.game_actions, lines=[],
+        self.gui.start_gameroom(choices=self.game_actions, game=self.game,
                                 status="New game, generating...")
 
         # TODO: These should be per game later
@@ -90,7 +90,6 @@ class GameController(object):
             """)
 
         # Avoid duplicating all the text... Have its own object for it?
-        self.gui._lines = self.game.lines
         self.gui.print_screen(status="New game started")
 
         self.start_game_input_loop()
@@ -116,7 +115,6 @@ class GameController(object):
         """Generate new text"""
         self.gui.send_message("Generating more text...")
         self.game.generate_next_lines()
-        self.gui._lines = self.game.lines
         self.gui.print_screen("New text generated")
 
 
@@ -132,7 +130,6 @@ class GameController(object):
         """Retry last generation"""
         self.gui.send_message("Retry last text")
         self.game.retry_last_line()
-        self.gui._lines = self.game.lines
         self.gui.print_screen("New text generated")
 
 
@@ -140,7 +137,6 @@ class GameController(object):
         """Edit last line/response"""
         newline = self.gui.edit_last_line()
         self.game.change_last_line(newline)
-        self.gui._lines = self.game.lines
         self.gui.print_screen('Last line updated')
 
 
@@ -148,13 +144,11 @@ class GameController(object):
         """Write a new line/response"""
         newline = self.gui.get_line_input()
         self.game.add_lines(newline)
-        self.gui._lines = self.game.lines
         self.gui.print_screen()
 
     def delete_last_line(self):
         """Delete last line/response"""
         self.game.delete_last_line()
-        self.gui._lines = self.game.lines
         self.gui.print_screen('Deleted last line')
 
 
