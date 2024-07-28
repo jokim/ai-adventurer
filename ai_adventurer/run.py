@@ -172,8 +172,12 @@ class Game(object):
         self.nlp = nlp
         # TODO: How to manage a separation between the story and instructions?
         self.lines = []
-        self.gameid = db.get_next_id()
         self.focus = None
+        self.instructions = ''
+        self.details = ''
+        self.title = 'Test 123'
+
+        self.gameid = db.create_new_game(self.title)
 
 
     def save(self):
@@ -193,7 +197,13 @@ class Game(object):
     def set_instructions(self, text):
         """Set the instructions for the NLP generations."""
         self.instructions = self.cleanup_text(text)
-        self.db.save_game(self)
+        self.save()
+
+
+    def set_details(self, text):
+        """Set story details and other important information"""
+        self.details = self.cleanup_text(text)
+        self.save(self)
 
 
     def get_active_line(self):
@@ -206,7 +216,7 @@ class Game(object):
         self.lines.append(text)
         # Set focus to the new line. Not sure if that is intuitive?
         self.focus = len(self.lines) - 1
-        self.db.add_lines(self.gameid, text)
+        self.save()
 
 
     def _generate_prompt(self, text=None):
@@ -224,12 +234,14 @@ class Game(object):
     def generate_next_lines(self, instructions=None):
         more = self._generate_prompt(instructions)
         self.add_lines(more)
+        self.save()
         return more
 
 
     def delete_line(self, lineid):
         del self.lines[lineid]
         self.set_focus_up()
+        self.save()
 
 
     def delete_active_line(self):
@@ -245,6 +257,8 @@ class Game(object):
         else:
             print("Can't retry inside, per now")
             logger.warning("Can't retry inside chain, per now")
+
+        self.save()
 
 
     def change_active_line(self, new_text):
