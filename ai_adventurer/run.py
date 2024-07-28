@@ -61,12 +61,12 @@ class GameController(object):
 
 
     def start_new_game(self):
-        #self.nlp_thread = nlp.OpenAINLPThread()
-        #self.nlp_thread = nlp.LocalNLPThread()
-        self.nlp_thread = nlp.GeminiNLPThread()
-        #self.nlp_thread = nlp.MockNLPThread()
+        #nlp_thread = nlp.OpenAINLPThread()
+        #nlp_thread = nlp.LocalNLPThread()
+        nlp_thread = nlp.GeminiNLPThread()
+        #nlp_thread = nlp.MockNLPThread()
 
-        self.game = Game(db=self.db, nlp=self.nlp_thread)
+        self.game = Game(db=self.db, nlp=nlp_thread)
         print("New game!")
 
         self.gui.start_gameroom(choices=self.game_actions, lines=[],
