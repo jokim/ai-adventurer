@@ -77,9 +77,17 @@ class GameController(object):
 
         # TODO: These should be per game later
         self.game.set_instructions("""
-            You are a very good story writer assistant, helping with creating
-            an adventure by the given instructions. Return one sentence,
-            continuing the given story.
+            You are an excellent story writer, writing remarkable fantasy
+            fiction.
+
+            Writing Guidelines: Use rich imagery, focus on details, and be
+            specific. Use writing techniques to bring the world and characters
+            to life. Let the characters develop, and bring out their
+            motivations, relationships, thoughts and complexity. Keep the story
+            on track, but be creative and allow suprising subplots. Include
+            dialog with the characters. Avoid repetition and summarisation.
+
+            Return one sentence, continuing the given story.
             """)
 
         # TODO: Temp start, just to have something
