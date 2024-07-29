@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import argparse
+import configparser
 import logging
 import re
 import time
@@ -11,6 +12,9 @@ import db
 
 
 logger = logging.getLogger(__name__)
+
+default_configfile = 'config.ini'
+default_secretsfile = 'secrets.ini'
 
 
 default_instructions = """
@@ -62,9 +66,9 @@ def remove_comments(text):
 class GameController(object):
     """The controller of the game"""
 
-    def __init__(self):
-        # The state of where you are in the GUI. A bit too simple, probably.
-        self.status = None
+    def __init__(self, config, secrets):
+        self.config = config
+        self.secrets = secrets
         self.gui = cli_gui.GUI()
         self.db = db.Database()
 
@@ -93,7 +97,8 @@ class GameController(object):
         choices = {
             'n': ('New game', self.start_new_game),
             'l': ('Load game', self.load_game),
-            'c': ('Configuration', self.edit_config),
+            'c': ('Write config file (config.ini and secrets.ini)',
+                  self.edit_config),
             'q': ('Quit', self.quit),
         }
         while True:
@@ -126,8 +131,8 @@ class GameController(object):
 
 
     def edit_config(self):
-        # TODO: edit config from file?
-        pass
+        self.config.write(open(default_configfile, 'w'))
+        self.secrets.write(open(default_secretsfile, 'w'))
 
 
     def start_new_game(self):
@@ -246,13 +251,8 @@ class GameController(object):
 
     def get_nlp_handler(self):
         if not hasattr(self, 'nlp'):
-            #nlp_thread = nlp.OpenAINLPThread()
-            #nlp_thread = nlp.LocalNLPThread()
-            nlp_thread = nlp.GeminiNLPThread()
-            #nlp_thread = nlp.MockNLPThread()
-
-            self.nlp = nlp_thread
-
+            nlp_class = nlp.get_nlp_class(self.config['DEFAULT']['nlp_model'])
+            self.nlp = nlp_class(secrets=self.secrets)
         return self.nlp
 
 
@@ -423,12 +423,77 @@ class Game(object):
             self.focus = len(self.lines) - 1
 
 
+def load_config(config_file, args):
+    """Using a simple INI file by now"""
+    default_settings = {
+        'DEFAULT': {
+            # See ai_adventurer/nlp.py for available models
+            'nlp_model': 'gemini-1.5-flash',
+        },
+    }
+    config = configparser.ConfigParser()
+    config.read_dict(default_settings)
+    config.read(config_file)
+
+    # Override with command-line arguments
+    if args.nlp_model:
+        config['DEFAULT']['nlp_model'] = args.nlp_model
+
+    return config
+
+
+def load_secrets(config_file):
+    """I like to have the secrets separated from the rest of the config."""
+    default_settings = {
+        'DEFAULT': {
+            'openai-key': 'CHANGEME',
+            'gemini-key': 'CHANGEME',
+        },
+    }
+    config = configparser.ConfigParser()
+    config.read_dict(default_settings)
+    config.read(config_file)
+
+    # Not passing any variables as script arguments, since these are secrets.
+    return config
+
+
 def main():
     parser = argparse.ArgumentParser(
         description='Run the AI adventurer game in the terminal'
     )
-    parser.add_argument('-d', '--debug', action='store_true',
-                        help='Log debug data to file, for development')
+    parser.add_argument(
+        '-d',
+        '--debug',
+        action='store_true',
+        help='Log debug data to file, for development',
+    )
+    parser.add_argument(
+        '--config-file',
+        type=str,
+        metavar='FILENAME',
+        default=default_configfile,
+        help='Where the config is located. Default: %(default)s',
+    )
+    parser.add_argument(
+        '--secrets-file',
+        type=str,
+        metavar='FILENAME',
+        default=default_secretsfile,
+        help='Where the secrets are located. Default: %(default)s',
+    )
+    parser.add_argument(
+        '--nlp-model',
+        type=str,
+        metavar='MODEL',
+        help='Which AI NLP model to use',
+    )
+    parser.add_argument(
+        '--list-nlp-models',
+        action='store_true',
+        help='List available AI NLP models'
+    )
+
     args = parser.parse_args()
 
     if args.debug:
@@ -438,8 +503,16 @@ def main():
         logging.basicConfig(filename='logger.log', encoding='utf-8',
                             level=logging.WARNING)
 
+    if args.list_nlp_models:
+        for m in nlp.models:
+            print(m)
+        return
+
+    config = load_config(args.config_file, args)
+    secrets = load_secrets(args.secrets_file)
+
     logger.debug("Starting game")
-    game = GameController()
+    game = GameController(config, secrets)
     game.run()
     logger.debug("Stopping game")
 

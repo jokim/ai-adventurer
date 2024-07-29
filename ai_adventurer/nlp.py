@@ -14,7 +14,7 @@ from google.generativeai.types import HarmCategory, HarmBlockThreshold
 
 logger = logging.getLogger(__name__)
 
-default_model = 'data/gpt2base.keras'
+default_local_model = 'data/gpt2base.keras'
 
 
 class NLPThread(object):
@@ -24,8 +24,8 @@ class NLPThread(object):
 
     """
 
-    def __init__(self):
-        pass
+    def __init__(self, secrets=None):
+        self.secrets = secrets
 
 
     def prompt(self, text=None):
@@ -46,8 +46,8 @@ class MockNLPThread(NLPThread):
         '"Well well well," he said.',
         )
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
 
     def prompt(self, text=None):
@@ -63,14 +63,14 @@ class LocalNLPThread(NLPThread):
 
     """
 
-    def __init__(self, nlp_file=None):
+    def __init__(self, *args, nlp_file=None, **kwargs):
+        super().__init__(*args, **kwargs)
+
         import keras
         #import keras_nlp
 
-        super().__init__()
-
         if not nlp_file:
-            nlp_file = default_model
+            nlp_file = default_local_model
         self.model = self._load_model(nlp_file)
 
 
@@ -112,12 +112,9 @@ class OpenAINLPThread(NLPThread):
 
     openai_model = 'gpt-4o-mini'
 
-    def __init__(self):
-        super().__init__()
-        # TODO: HACK FIXME: Just shortcutting the OpenAI while testing. Must be
-        # a config later!!!
-        self.client = OpenAI(api_key='sk-proj-JK9qKvo99lEvhsC8LmQWT3BlbkFJcIsw8NE4kzmwT8B7cn2o')
-        # TODO: HACK FIXME: Just shortcutting the OpenAI while testing
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.client = OpenAI(api_key=self.secrets['DEFAULT']['openai-key'])
 
 
     def prompt(self, text):
@@ -146,14 +143,9 @@ class GeminiNLPThread(NLPThread):
             HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
     }
 
-    def __init__(self):
-        super().__init__()
-
-        # TODO: HACK FIXME: Just shortcutting the api key while testing. Must be
-        # a config later!!!
-        genai.configure(api_key = 'AIzaSyCcVi-SVhIFl4XOg3ecuM75XC28deo0ozA')
-        # TODO: HACK FIXME: Just shortcutting the api key while testing
-
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        genai.configure(api_key = self.secrets['DEFAULT']['gemini-key'])
         self.client = genai.GenerativeModel(self.google_model,
                                             safety_settings=self.safety_settings)
 
@@ -165,3 +157,19 @@ class GeminiNLPThread(NLPThread):
         )
         logger.debug("Response from Gemini: '%s'", answer.text)
         return answer.text
+
+
+models = {
+        'gemini-1.5-flash': GeminiNLPThread,
+        'gemini-1.5-pro': GeminiNLPThread,
+        'gemini-1.0-pro': GeminiNLPThread,
+        'gpt-4o-mini': OpenAINLPThread,
+        'gpt-4o': OpenAINLPThread,
+        'mock': MockNLPThread,
+        # TODO: would probably also need a file name
+        'local': LocalNLPThread,
+}
+
+
+def get_nlp_class(model):
+    return models[model]
