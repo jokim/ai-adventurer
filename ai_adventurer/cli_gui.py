@@ -58,9 +58,7 @@ class GUI(object):
 
     def edit_line(self, old_text):
         """Ask user to edit given text and return the new one."""
-        # TODO: fix this better! Just asking for input now...
-        #print(self.term.move_xy(0, self.term.height - 2) + self.term.clear_eol, end='')
-        #newline = input("Change last line to: ").strip()
+        # Just make use of an editor instead
         with tempfile.NamedTemporaryFile(mode='w+', suffix='.txt') as tmpfile:
             tmpfile.write(old_text)
             tmpfile.flush()
@@ -82,13 +80,46 @@ class GUI(object):
         return newline
 
 
-    def print_mainmenu(self, choices):
+    def get_input_menu(self, choices, title=None):
+        """Ask the user to chose an option, and return that.
+
+        The choice format: keys are the character to push for its choice, and
+        the values are tuples, where the first must be a human readable name.
+        The rest is ignored by this method. Example:
+
+            'n': ('New game', ...),
+
+        """
+        status = None
+        while True:
+            self.print_menu(choices, title=title, status=status)
+            inp = self.get_keyinput()
+            if inp in choices:
+                return choices[inp]
+            elif inp.name in choices:
+                # This is for characters like 'ENTER_KEY'
+                return choices[inp.name]
+            else:
+                status = f"You chose badly: {inp!r}"
+
+
+    def print_menu(self, choices, title=None, status=None):
+        # TODO: print header
         print(self.term.home + self.term.on_black + self.term.clear)  
         print(self.term.move_down(2))
+        if title:
+            print(self.term.bold(title))
+            print(self.term.move_down(1))
+
         for key, options in choices.items():
+            if key == 'KEY_ENTER':
+                key = 'Enter'
             print(self.term.bold(str(key)) + ' - ' + options[0])
         print()
-        print("Choose wisely!")
+        if status:
+            print()
+            print(status)
+        # TODO: Any footer to print?
 
 
     def start_gameroom(self, choices, game, status=''):
