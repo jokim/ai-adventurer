@@ -13,6 +13,26 @@ import db
 logger = logging.getLogger(__name__)
 
 
+default_instructions = """
+    # This is the instructions that is given to the AI at each step in the
+    # story.
+    # - All lines starting with hash (#) are ignored.
+    # - Leave the instructions blank to reset to the default instructions.
+
+    You are an excellent story writer, writing remarkable fantasy fiction.
+
+    Writing Guidelines: Use rich imagery, focus on details, but be specific and
+    to the point. Use writing techniques to bring the world and characters to
+    life. Let the characters develop, and bring out their motivations,
+    relationships, thoughts and complexity. Keep the story on track, but be
+    creative and allow suprising subplots.  Include dialog with the characters.
+    Avoid repetition and summarisation. Use humor. Use first person
+    perspective, and present tense.
+
+    Return one sentence, continuing the given story:
+    """
+
+
 class GameController(object):
     """The controller of the game"""
 
@@ -26,9 +46,11 @@ class GameController(object):
             'j': ("Down", self.shift_focus_down),
             'k': ("Up", self.shift_focus_up),
             'r': ("Retry", self.retry),
-            'e': ("Edit", self.edit_line),
+            'e': ("Edit", self.edit_active_line),
             'd': ("Delete", self.delete_active_line),
             'a': ("Add", self.add_line),
+            't': ("Title", self.edit_title),
+            'i': ("Instructions", self.edit_instructions),
             'q': ("Quit", self.quit_game),
             'KEY_ENTER': ('Next', self.next_line),
         }
@@ -85,19 +107,8 @@ class GameController(object):
         self.game = Game(db=self.db, nlp=self.get_nlp_handler())
 
         # TODO: These should be per game later
-        self.game.set_instructions("""
-            You are an excellent story writer, writing remarkable fantasy
-            fiction.
+        self.game.set_instructions(default_instructions)
 
-            Writing Guidelines: Use rich imagery, focus on details, and be
-            specific. Use writing techniques to bring the world and characters
-            to life. Let the characters develop, and bring out their
-            motivations, relationships, thoughts and complexity. Keep the story
-            on track, but be creative and allow suprising subplots. Include
-            dialog with the characters. Avoid repetition and summarisation.
-
-            Return one sentence, continuing the given story:
-            """)
         # TODO: Avoid duplicating all the text... Have its own object for it?
 
         # TODO: Temp start, just to have something
@@ -152,7 +163,7 @@ class GameController(object):
         self.gui.print_screen("New text generated")
 
 
-    def edit_line(self):
+    def edit_active_line(self):
         """Edit chosen line/response"""
         _, oldline = self.game.get_active_line()
         newline = self.gui.edit_line(oldline)
@@ -163,13 +174,45 @@ class GameController(object):
     def add_line(self):
         """Write a new line/response"""
         newline = self.gui.get_line_input()
-        self.game.add_lines(newline)
+        if newline:
+            self.game.add_lines(newline)
         self.gui.print_screen()
+
 
     def delete_active_line(self):
         """Delete chosen line/response"""
         self.game.delete_active_line()
         self.gui.print_screen('Line deleted')
+
+
+    def edit_title(self):
+        new_title = self.gui.edit_line(self.game.title)
+        if new_title:
+            self.game.set_title(new_title)
+            self.gui.print_screen('Title updated')
+        else:
+            self.gui.print_screen('Title not updated')
+
+
+    @staticmethod
+    def remove_comments(text):
+        ret = []
+        for line in text.splitlines():
+            line = line.lstrip()
+            if not line.startswith('#'):
+                ret.append(line)
+        return '\n'.join(ret)
+
+
+    def edit_instructions(self):
+        old_instructions = self.game.instructions
+        new_instructions = self.gui.edit_line(old_instructions)
+
+        if not self.remove_comments(new_instructions.strip()).strip():
+            new_instructions = default_instructions
+
+        self.game.set_instructions(new_instructions)
+        self.gui.print_screen('Instructions updated')
 
 
     def quit_game(self):
@@ -198,7 +241,7 @@ class Game(object):
     def __init__(self, db, nlp, gameid=None):
         self.db = db
         self.nlp = nlp
-        self.focus = None
+        self.focus = -1
 
         # TODO: How to manage a separation between the story and instructions?
         if gameid:
@@ -223,23 +266,30 @@ class Game(object):
     @staticmethod
     def cleanup_text(text):
         """Remove some unncessary whitespace"""
-        # Replace multiple newlines with at most two
+        # Replace multiple newlines with at most two (keeping paragraphs)
         text = re.sub(r'\n{3,}', '\n\n', text)
         # Replace multiple spaces with a single space
-        text = re.sub(r'\s+', ' ', text)
+        text = re.sub(r'[ \t\r\f\v]+', ' ', text)
         return text
 
 
     def set_instructions(self, text):
         """Set the instructions for the NLP generations."""
+        logger.debug(f"Saving new instructions: {text!r}")
         self.instructions = self.cleanup_text(text)
+        logger.debug(f"Instructions after cleanup: {self.instructions!r}")
         self.save()
 
 
     def set_details(self, text):
         """Set story details and other important information"""
         self.details = self.cleanup_text(text)
-        self.save(self)
+        self.save()
+
+
+    def set_title(self, new_title):
+        self.title = self.cleanup_text(new_title).strip()
+        self.save()
 
 
     def get_active_line(self):
