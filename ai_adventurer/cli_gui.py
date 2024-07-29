@@ -63,7 +63,8 @@ class GUI(object):
             tmpfile.write(old_text)
             tmpfile.flush()
 
-            # Choose your preferred editor, adjust the command accordingly
+            # TODO: Choose your preferred editor, adjust the command
+            # accordingly
             editor_command = ['vim', tmpfile.name]
             subprocess.run(editor_command)
 
@@ -73,10 +74,10 @@ class GUI(object):
         return new_text
 
 
-    def get_line_input(self):
+    def get_line_input(self, question='Add a new line: '):
         """Ask the user to write a line."""
         print(self.term.move_xy(0, self.term.height - 2) + self.term.clear_eol, end='')
-        newline = input("Add a new line: ").strip()
+        newline = input(question).strip()
         return newline
 
 
@@ -178,6 +179,9 @@ class GUI(object):
         while i >= 0:
             line = lines[i]
             rows = self.term.wrap(line, width=min(self.term.width - 10, 120))
+            # Make sure blank rows are included
+            if not rows:
+                rows.append('')
             for row in reversed(rows):
                 if i == focus:
                     print(self.term.standout, end='')

@@ -29,8 +29,34 @@ default_instructions = """
     Avoid repetition and summarisation. Use humor. Use first person
     perspective, and present tense.
 
-    Return one sentence, continuing the given story:
+    Return one sentence, continuing the given story.
+
     """
+
+
+default_details = """
+    # Story summary and details.
+    #
+    # This is where you could put details that are important for the story. For
+    # example a summary of how the story should go, or details about certain
+    # characters.
+    #
+    # All lines starting with hash (#) are ignored.
+
+    This is a dystopian cyberpunk story, in the year 2345. You are called Lou
+    and live in the chaotic and huge city of New Zhu. The city is vibrant, but
+    the government has lost control, so the regulations are often broken.
+
+    """
+
+
+def remove_comments(text):
+    ret = []
+    for line in text.splitlines():
+        line = line.lstrip()
+        if not line.startswith('#'):
+            ret.append(line)
+    return '\n'.join(ret)
 
 
 class GameController(object):
@@ -47,10 +73,11 @@ class GameController(object):
             'k': ("Up", self.shift_focus_up),
             'r': ("Retry", self.retry),
             'e': ("Edit", self.edit_active_line),
-            'd': ("Delete", self.delete_active_line),
+            'd': ("Del", self.delete_active_line),
             'a': ("Add", self.add_line),
             't': ("Title", self.edit_title),
-            'i': ("Instructions", self.edit_instructions),
+            's': ("Story", self.edit_story_details),
+            'i': ("Instruct", self.edit_instructions),
             'q': ("Quit", self.quit_game),
             'KEY_ENTER': ('Next', self.next_line),
         }
@@ -105,19 +132,11 @@ class GameController(object):
 
     def start_new_game(self):
         self.game = Game(db=self.db, nlp=self.get_nlp_handler())
-
-        # TODO: These should be per game later
+        title = self.gui.get_line_input("An initial title for the story? ")
+        self.game.set_title(title)
         self.game.set_instructions(default_instructions)
-
-        # TODO: Avoid duplicating all the text... Have its own object for it?
-
-        # TODO: Temp start, just to have something
-        self.game.add_lines("""
-            This is a cyberpunk story, in the year 2345. You are called Lou,
-            and are an android, living in the metropoly of New Zhu.
-            One day you woke up, and started thinking
-            """)
-
+        self.game.set_details(default_details)
+        self.game.add_lines(self.game.get_introduction())
         self.gui.start_gameroom(choices=self.game_actions, game=self.game,
                                 status="Started new game")
         self.start_game_input_loop()
@@ -167,6 +186,7 @@ class GameController(object):
         """Edit chosen line/response"""
         _, oldline = self.game.get_active_line()
         newline = self.gui.edit_line(oldline)
+        # TODO: what to do if it gets blank? Just save it?
         self.game.change_active_line(newline)
         self.gui.print_screen('Last line updated')
 
@@ -194,25 +214,25 @@ class GameController(object):
             self.gui.print_screen('Title not updated')
 
 
-    @staticmethod
-    def remove_comments(text):
-        ret = []
-        for line in text.splitlines():
-            line = line.lstrip()
-            if not line.startswith('#'):
-                ret.append(line)
-        return '\n'.join(ret)
-
 
     def edit_instructions(self):
-        old_instructions = self.game.instructions
-        new_instructions = self.gui.edit_line(old_instructions)
+        new_instructions = self.gui.edit_line(self.game.instructions)
 
-        if not self.remove_comments(new_instructions.strip()).strip():
+        if not remove_comments(new_instructions.strip()).strip():
             new_instructions = default_instructions
 
         self.game.set_instructions(new_instructions)
         self.gui.print_screen('Instructions updated')
+
+
+    def edit_story_details(self):
+        new_details = self.gui.edit_line(self.game.details)
+
+        if not remove_comments(new_details.strip()).strip():
+            new_details = default_details
+
+        self.game.set_details(new_details)
+        self.gui.print_screen('Story summary updated')
 
 
     def quit_game(self):
@@ -275,9 +295,7 @@ class Game(object):
 
     def set_instructions(self, text):
         """Set the instructions for the NLP generations."""
-        logger.debug(f"Saving new instructions: {text!r}")
         self.instructions = self.cleanup_text(text)
-        logger.debug(f"Instructions after cleanup: {self.instructions!r}")
         self.save()
 
 
@@ -308,12 +326,32 @@ class Game(object):
     def _generate_prompt(self, text=None):
         # TODO: Should the instruction go into the NLP object creation, since
         # the APIs have its own parameter for that? Or are there no difference?
-        prompt = [self.instructions,]
+        prompt = [remove_comments(self.instructions)]
+        details = remove_comments(self.details)
+        prompt.append(f"\n---\nThe title of the story: '{self.title}'\n")
+        if details.strip():
+            prompt.append("\n---\nImportant details about the story:\n")
+            prompt.append(details)
+
+        prompt.append('\n---\nAnd here is the story so far:\n')
         prompt.extend(self.lines)
         if text:
             prompt.append(text)
 
         # TODO: check if all APIs support lists of just text
+        return self.cleanup_text(self.nlp.prompt(prompt))
+
+
+    def get_introduction(self):
+        """Make the AI come up with the initial start of the story."""
+        prompt = [remove_comments(self.instructions)]
+        details = remove_comments(self.details)
+        prompt.append(f"\n---\nThe title of the story: '{self.title}'\n")
+        if details.strip():
+            prompt.append("\n---\nImportant details about the story:\n")
+            prompt.append(details)
+
+        prompt.append('\n---\nGive me three sentences that starts this story.')
         return self.cleanup_text(self.nlp.prompt(prompt))
 
 
