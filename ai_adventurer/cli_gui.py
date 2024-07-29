@@ -6,6 +6,8 @@ Making use of `blessed` to have a more fancy CLI.
 """
 
 import logging
+import subprocess
+import tempfile
 import time
 
 from blessed import Terminal
@@ -57,9 +59,20 @@ class GUI(object):
     def edit_line(self, old_text):
         """Ask user to edit given text and return the new one."""
         # TODO: fix this better! Just asking for input now...
-        print(self.term.move_xy(0, self.term.height - 2) + self.term.clear_eol, end='')
-        newline = input("Change last line to: ").strip()
-        return newline
+        #print(self.term.move_xy(0, self.term.height - 2) + self.term.clear_eol, end='')
+        #newline = input("Change last line to: ").strip()
+        with tempfile.NamedTemporaryFile(mode='w+', suffix='.txt') as tmpfile:
+            tmpfile.write(old_text)
+            tmpfile.flush()
+
+            # Choose your preferred editor, adjust the command accordingly
+            editor_command = ['vim', tmpfile.name]
+            subprocess.run(editor_command)
+
+            tmpfile.seek(0)
+            new_text = tmpfile.read()
+
+        return new_text
 
 
     def get_line_input(self):
