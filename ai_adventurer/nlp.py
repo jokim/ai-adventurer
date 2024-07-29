@@ -99,7 +99,7 @@ class LocalNLPThread(NLPThread):
         start = time.time()
         output = self.model.generate(
                         pretext,
-                        max_length=min(1024, len(pretext) + 50)
+                        max_length=min(1024, len(pretext) + 40)
         ).strip()
         end = time.time()
 

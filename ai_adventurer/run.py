@@ -87,7 +87,7 @@ class GameController(object):
             on track, but be creative and allow suprising subplots. Include
             dialog with the characters. Avoid repetition and summarisation.
 
-            Return one sentence, continuing the given story.
+            Return one sentence, continuing the given story:
             """)
 
         # TODO: Temp start, just to have something
