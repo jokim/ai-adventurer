@@ -104,6 +104,30 @@ class Database(object):
         }
 
 
+    def get_games(self, _session=None):
+        if not _session:
+            _session = orm.Session(self._engine)
+        ret = []
+        for game in _session.scalars(sqlalchemy.select(Game)):
+            ret.append({
+                'gameid': game.gameid,
+                'title': game.title,
+                'instructions': game.instructions,
+                'details': game.details,
+            })
+        return ret
+
+
+    def get_lines(self, gameid, _session=None):
+        if not _session:
+            _session = orm.Session(self._engine)
+        ret = []
+        for line in _session.scalars(sqlalchemy.select(Line)
+                                        .where(Line.gameid == gameid)):
+            ret.append(line.text)
+        return ret
+
+
     def save_game(self, game):
         session = orm.Session(self._engine)
         db_game = self._get_game(game.gameid, _session=session)

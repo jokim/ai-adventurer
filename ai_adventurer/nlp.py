@@ -126,7 +126,6 @@ class OpenAINLPThread(NLPThread):
         for t in text:
             new_text.append({'role': 'user', 'content': t})
 
-        # TODO: make use of the stream functionality?
         answer = self.client.chat.completions.create(
                     model=self.openai_model,
                     messages=new_text,
@@ -161,7 +160,6 @@ class GeminiNLPThread(NLPThread):
 
     def prompt(self, text):
         logger.debug("Generating with prompt: '%s'", text)
-        # TODO: make use of the stream functionality?
         answer = self.client.generate_content(
                     contents=text,
         )
