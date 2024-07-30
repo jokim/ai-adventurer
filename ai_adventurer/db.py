@@ -6,7 +6,6 @@
 from typing import List
 from typing import Optional
 import logging
-import sqlite3
 
 import sqlalchemy
 import sqlalchemy.orm as orm
@@ -77,7 +76,6 @@ class Database(object):
         self._engine = sqlalchemy.create_engine(self._db_file)
         _Base.metadata.create_all(self._engine)
 
-
     def create_new_game(self, title=''):
         with orm.Session(self._engine) as session:
             game = Game(title=title)
@@ -85,14 +83,12 @@ class Database(object):
             session.commit()
             return game.gameid
 
-
     def _get_game(self, gameid, _session=None):
         if not _session:
             _session = orm.Session(self._engine)
         for game in _session.scalars(sqlalchemy.select(Game)
-                                        .where(Game.gameid == gameid)):
+                                     .where(Game.gameid == gameid)):
             return game
-
 
     def get_game(self, gameid, _session=None):
         game = self._get_game(gameid=gameid, _session=_session)
@@ -102,7 +98,6 @@ class Database(object):
             'instructions': game.instructions,
             'details': game.details,
         }
-
 
     def get_games(self, _session=None):
         if not _session:
@@ -117,16 +112,14 @@ class Database(object):
             })
         return ret
 
-
     def get_lines(self, gameid, _session=None):
         if not _session:
             _session = orm.Session(self._engine)
         ret = []
         for line in _session.scalars(sqlalchemy.select(Line)
-                                        .where(Line.gameid == gameid)):
+                                     .where(Line.gameid == gameid)):
             ret.append(line.text)
         return ret
-
 
     def save_game(self, game):
         session = orm.Session(self._engine)

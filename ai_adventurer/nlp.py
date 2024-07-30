@@ -27,7 +27,6 @@ class NLPThread(object):
     def __init__(self, secrets=None):
         self.secrets = secrets
 
-
     def prompt(self, text=None):
         """Subclass for the specifig NLP generation.
 
@@ -49,7 +48,6 @@ class MockNLPThread(NLPThread):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-
     def prompt(self, text=None):
         import random
         response = random.choice(self.replies)
@@ -66,19 +64,15 @@ class LocalNLPThread(NLPThread):
     def __init__(self, *args, nlp_file=None, **kwargs):
         super().__init__(*args, **kwargs)
 
-        import keras
-        #import keras_nlp
-
         if not nlp_file:
             nlp_file = default_local_model
         self.model = self._load_model(nlp_file)
 
-
     def _load_model(self, nlp_file):
         import keras
+        # import keras_nlp
         model = keras.saving.load_model(nlp_file, compile=True)
         return model
-
 
     def prompt(self, text):
         super().prompt(text)
@@ -91,7 +85,6 @@ class LocalNLPThread(NLPThread):
         # Remove the pretext, so only the new ouptut is returned
         output = output[len(text):].strip()
         return output
-
 
     def _generate(self, pretext):
         logger.debug("Generating with prompt: '%s'", pretext)
@@ -116,7 +109,6 @@ class OpenAINLPThread(NLPThread):
         super().__init__(*args, **kwargs)
         self.client = OpenAI(api_key=self.secrets['DEFAULT']['openai-key'])
 
-
     def prompt(self, text):
         # Reformat the prompt to follow OpenAIs specs:
         new_text = []
@@ -135,20 +127,26 @@ class GeminiNLPThread(NLPThread):
 
     google_model = 'gemini-1.5-flash'
 
-    # Google's tresholds are very sensitive, so need to adjust these. Keep low for now.
+    # Google's tresholds are very sensitive, so need to adjust these. Keep low
+    # for now.
     safety_settings = {
-            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
-            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
-            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
-            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+        HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT:
+            HarmBlockThreshold.BLOCK_NONE,
+        HarmCategory.HARM_CATEGORY_HARASSMENT:
+            HarmBlockThreshold.BLOCK_NONE,
+        HarmCategory.HARM_CATEGORY_HATE_SPEECH:
+            HarmBlockThreshold.BLOCK_NONE,
+        HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT:
+            HarmBlockThreshold.BLOCK_NONE,
     }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        genai.configure(api_key = self.secrets['DEFAULT']['gemini-key'])
-        self.client = genai.GenerativeModel(self.google_model,
-                                            safety_settings=self.safety_settings)
-
+        genai.configure(api_key=self.secrets['DEFAULT']['gemini-key'])
+        self.client = genai.GenerativeModel(
+                                self.google_model,
+                                safety_settings=self.safety_settings
+        )
 
     def prompt(self, text):
         logger.debug("Generating with prompt: '%s'", text)

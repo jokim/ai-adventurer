@@ -8,11 +8,11 @@ Making use of `blessed` to have a more fancy CLI.
 import logging
 import subprocess
 import tempfile
-import time
 
 from blessed import Terminal
 
 logger = logging.getLogger(__name__)
+
 
 class GUI(object):
     """The main GUI of the game.
@@ -25,16 +25,13 @@ class GUI(object):
     def __init__(self):
         self.term = Terminal()
 
-
     def activate(self):
         return self.term.fullscreen()
-
 
     def get_keyinput(self):
         """Shortcut for waiting for user key input."""
         with self.term.cbreak(), self.term.hidden_cursor():
             return self.term.inkey()
-
 
     def edit_line(self, old_text):
         """Ask user to edit given text and return the new one."""
@@ -53,13 +50,12 @@ class GUI(object):
 
         return new_text
 
-
     def get_line_input(self, question='Add a new line: '):
         """Ask the user to write a line."""
-        print(self.term.move_xy(0, self.term.height - 2) + self.term.clear_eol, end='')
+        print(self.term.move_xy(0, self.term.height - 2) +
+              self.term.clear_eol, end='')
         newline = input(question).strip()
         return newline
-
 
     def get_input_menu(self, choices, title=None):
         """Ask the user to chose an option, and return that.
@@ -83,10 +79,9 @@ class GUI(object):
             else:
                 status = f"You chose badly: {inp!r}"
 
-
     def print_menu(self, choices, title=None, status=None):
         # TODO: print header
-        print(self.term.home + self.term.on_black + self.term.clear)  
+        print(self.term.home + self.term.on_black + self.term.clear)
         print(self.term.move_down(2))
         if title:
             print(self.term.bold(title))
@@ -102,19 +97,19 @@ class GUI(object):
             print(status)
         # TODO: Any footer to print?
 
-
     def start_gameroom(self, choices, game, status=''):
         """Show the initial GUI for when in a game"""
         self._choices = choices
         self._game = game
         self.print_screen(status=status)
 
-
     def send_message(self, message):
         """Send a message to the status field on the screen"""
         print(self.term.move_xy(1, self.term.height - 3), end='')
-        print(self.term.ljust(message, width=self.term.width - 1, fillchar=' '), end='')
-
+        print(self.term.ljust(message,
+                              width=self.term.width - 1,
+                              fillchar=' '),
+              end='')
 
     def print_screen(self, status=""):
         """Print the game screen, with all details."""
@@ -137,10 +132,10 @@ class GUI(object):
         print(self.term.darkgrey('-' * self.term.width))
         submenu = []
         for key, data in self._choices.items():
-            submenu.append(f'[{self.term.bold}{key}{self.term.normal}] {data[0]}')
+            submenu.append(f'[{self.term.bold}{key}{self.term.normal}] ' +
+                           f'{data[0]}')
 
         print(' ' + ' '.join(submenu), end='')
-
 
     def print_content(self, lines, focus):
         """Fill the main content area with the last lines"""
