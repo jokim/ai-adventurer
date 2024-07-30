@@ -240,6 +240,7 @@ class GameController(object):
                 model, extra = model.split(':', 1)
             if model in ('local', 'huggingface') and extra is None:
                 raise Exception("Missing param for NLP model, after : in conf")
+            logger.debug(f"Loading NLP {model!r} with param {extra!r}")
             nlp_class = nlp.get_nlp_class(model)
             self.nlp = nlp_class(secrets=self.secrets, extra=extra)
         return self.nlp
