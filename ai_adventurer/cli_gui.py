@@ -30,26 +30,6 @@ class GUI(object):
         return self.term.fullscreen()
 
 
-    def show_splashscreen(self):
-        print(self.term.home + self.term.on_black + self.term.clear)  
-        print(self.term.move_y(self.term.height // 2))
-        print(self.term.black_on_darkkhaki(self.term.center('AI storyhelper')))
-        print(self.term.move_y(self.term.height // 2))
-
-        # TODO Ascii logo art!
-
-        print(self.term.move_down(2))
-        print(self.term.center("Your own adventures, from your imagination"))
-
-        # Press any key...
-        #input = self.get_keyinput()
-
-        #print("you chose: '" + inp + "'")
-        #print("type: '" + str(type(inp)) + "'")
-        #print("repr: '" + str(repr(inp)) + "'")
-        #time.sleep(2)
-
-
     def get_keyinput(self):
         """Shortcut for waiting for user key input."""
         with self.term.cbreak(), self.term.hidden_cursor():
