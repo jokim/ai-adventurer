@@ -234,8 +234,14 @@ class GameController(object):
 
     def get_nlp_handler(self):
         if not hasattr(self, "nlp"):
-            nlp_class = nlp.get_nlp_class(self.config["DEFAULT"]["nlp_model"])
-            self.nlp = nlp_class(secrets=self.secrets)
+            model = self.config["DEFAULT"]["nlp_model"]
+            extra = None
+            if ':' in model:
+                model, extra = model.split(':', 1)
+            if model in ('local', 'huggingface') and extra is None:
+                raise Exception("Missing param for NLP model, after : in conf")
+            nlp_class = nlp.get_nlp_class(model)
+            self.nlp = nlp_class(secrets=self.secrets, extra=extra)
         return self.nlp
 
 
