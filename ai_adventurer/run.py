@@ -19,18 +19,19 @@ default_secretsfile = "secrets.ini"
 default_instructions = """
     # This is the instructions that is given to the AI at each step in the
     # story.
-    # - All lines starting with hash (#) are ignored.
+    # - All lines starting with hash (#) are removed before given to the AI.
     # - Leave the instructions blank to reset to the default instructions.
 
     You are an excellent story writer, writing remarkable fantasy fiction.
 
-    Writing Guidelines: Use rich imagery, focus on details, but be specific and
-    to the point. Use writing techniques to bring the world and characters to
-    life. Let the characters develop, and bring out their motivations,
-    relationships, thoughts and complexity. Keep the story on track, but be
-    creative and allow suprising subplots.  Include dialog with the characters.
-    Avoid repetition and summarisation. Use humor. Use first person
-    perspective, and present tense.
+    Writing Guidelines: Use first person perspective, and present tense, unless
+    the story starts different. Use writing techniques to bring the world and
+    characters to life. Use rich imagery lightly, but be specific and to the
+    point. Focus on details that makes the story alive. Let the characters
+    develop, and bring out their motivations, relationships, thoughts and
+    complexity. Keep the story on track, but be creative and allow surprising
+    subplots. Include dialog with the characters. Avoid repetition and
+    summarisation. Use humor.
 
     Return one sentence, continuing the given story.
 
@@ -46,10 +47,9 @@ default_details = """
     #
     # All lines starting with hash (#) are ignored.
 
-    This is a dystopian cyberpunk story, in the year 2345. You are called Lou
-    and live in the chaotic and huge city of New Zhu. The city is vibrant, but
-    the government has lost control, so the regulations are often broken.
-
+    # The default is quite generic...
+    This is a story about you, going on an adventurous journey. You will
+    experience a lot of things, and will be surprised from time to time.
     """
 
 
