@@ -153,17 +153,23 @@ class GUI(object):
         if focus == -1:
             focus = len(lines) - 1
 
-        i = len(lines) - 1
-        while i >= 0:
-            line = lines[i]
+        # Walk backward, from the bottom, and stop when you reach y_min
+        # Let the active line be at the bottom
+        line_nr = focus
+        # But, if the active line is not the last, show one more:
+        if line_nr < len(lines) - 1:
+            line_nr = focus + 1
+
+        while line_nr >= 0:
+            line = lines[line_nr]
             rows = self.term.wrap(line, width=min(self.term.width - 10, 120))
             # Make sure blank rows are included
             if not rows:
                 rows.append("")
             for row in reversed(rows):
-                if i == focus:
+                if line_nr == focus:
                     print(self.term.standout, end="")
-                print("%3d   " % i, end="")
+                print("%3d   " % line_nr, end="")
                 print(row, end="")
                 print(self.term.normal, end="")
 
@@ -172,6 +178,6 @@ class GUI(object):
                     return
                 print(self.term.move_xy(0, y_pos), end="")
 
-            i -= 1
+            line_nr -= 1
 
         # TODO: add an indicator, viewing that you are not at the bottom
