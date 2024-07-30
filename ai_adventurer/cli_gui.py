@@ -125,9 +125,9 @@ class GUI(object):
         # Footer
         print(self.term.move_xy(0, self.term.height - 4), end="")
         # status line
-        print(self.term.darkgrey("-" * self.term.width))
+        print(self.term.darkgrey("\u2500" * self.term.width))
         print(" " + status)
-        print(self.term.darkgrey("-" * self.term.width))
+        print(self.term.darkgrey("\u2500" * self.term.width))
         submenu = []
         for key, data in self._choices.items():
             submenu.append(
