@@ -14,6 +14,11 @@ from blessed import Terminal
 logger = logging.getLogger(__name__)
 
 
+class UserQuitting(Exception):
+    """Signalling the user quitting e.g. a menu"""
+    pass
+
+
 class GUI(object):
     """The main GUI of the game.
 
@@ -177,3 +182,100 @@ class GUI(object):
             line_nr -= 1
 
         # TODO: add an indicator, viewing that you are not at the bottom
+
+
+class TableEditor(object):
+    """Manages the view of a table with data, and input to manipulate it.
+
+    This is an attempt to try to generalise the flow a bit more. Probably a
+    prettier solution than this, but the thought behind this, per now:
+
+    - add_action is called to add menu options, and a callable
+    - if the given option is selected, the callable is called, and given the
+      active row in the table
+    - If the callable returns a string, it is presented to the user as a
+      message
+
+    Some special options are internal for this class, i.e. moving up and down
+    in the table, and exiting the table view.
+
+    """
+
+    def __init__(self, gui, table_data, choices):
+        self.data = table_data
+        self.gui = gui
+        self.focus = 0
+        # TODO: change to something better than this!
+        self.format = ('%5d ', '%-60s ', '%6s',)
+        self.choices = choices
+
+    def add_action(self, key, name, func):
+        self.choices[key] = (name, func)
+
+    def activate(self, message=None):
+        # TODO: what to do if the list is empty? Gives traceback
+        while True:
+            self.print_screen(message=message)
+            message = None
+            key = self.gui.get_keyinput()
+            if key == 'q':
+                raise UserQuitting()
+            elif key == 'j':
+                self.shift_focus_down()
+                continue
+            elif key == 'k':
+                self.shift_focus_up()
+                continue
+            elif key in self.choices:
+                return self.choices[key], self.data[self.focus]
+                # message = self.choices[key][1](self.data[self.focus])
+            elif key.name in self.choices:
+                return self.choices[key.name], self.data[self.focus]
+                # message = self.choices[key.name][1](self.data[self.focus])
+            else:
+                message = f"Unknown choice: {key!r}"
+
+    def print_screen(self, message=None):
+        self.gui.print_header()
+        # TODO: change to move up and down according in respect of self.focus
+        for i, line in enumerate(self.data):
+            if i == self.focus:
+                print(self.gui.term.standout, end="")
+
+            for i, element in enumerate(line):
+                formatter = self.format[i]
+                print(formatter % (element,), end='')
+            print(self.gui.term.normal)
+        self.print_footer_menu(message=message)
+
+    def print_footer_menu(self, message=None):
+        print(self.gui.term.move_xy(0, self.gui.term.height - 3), end="")
+        print(self.gui.term.darkgrey("\u2500" * self.gui.term.width))
+        print(message or '')
+
+        choices = self.choices.copy()
+        choices['j'] = ('Down', None)
+        choices['k'] = ('Up', None)
+        choices['q'] = ('Quit', None)
+        submenu = []
+        for key, data in choices.items():
+            if key == "KEY_ENTER":
+                key = "Enter"
+            submenu.append(
+                f"[{self.gui.term.bold}{key}{self.gui.term.normal}] " +
+                f"{data[0]}"
+            )
+        print(" ".join(submenu), end="")
+
+    def shift_focus_down(self):
+        # The list starts at 0 at the top, so we increase
+        self.focus += 1
+        # Don't pass the last line
+        if self.focus > len(self.data) - 1:
+            self.focus = len(self.data) - 1
+
+    def shift_focus_up(self):
+        # The list starts at 0 at the top, so we decrease
+        self.focus -= 1
+        if self.focus < 0:
+            self.focus = 0

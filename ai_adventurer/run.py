@@ -92,7 +92,7 @@ class GameController(object):
     def start_mainmenu_loop(self):
         choices = {
             "n": ("New game", self.start_new_game),
-            "l": ("Load game", self.load_game),
+            "l": ("Load game", self.start_game_lister),
             "c": (
                 "Write config file (config.ini and secrets.ini)",
                 self.edit_config,
@@ -107,30 +107,46 @@ class GameController(object):
                 return
             choice[1]()
 
-    def load_game(self):
-        choices = {}
+    def start_game_lister(self):
+        choices = {
+            'd': ('Delete', self.delete_game),
+            'n': ('New', self.start_new_game),
+            'KEY_ENTER': ('Load', self.load_game),
+        }
 
-        for game in self.db.get_games():
-            choices[str(game["gameid"])] = (f"{game['title']}", game["gameid"])
-        choices["q"] = ("Quit this menu", None)
+        message = None
+        while True:
+            games = []
+            for game in self.db.get_games():
+                games.append((game['gameid'], game['title'], 'TODO length'))
+            table_viewer = cli_gui.TableEditor(self.gui, games,
+                                               choices=choices)
+            try:
+                choice, game = table_viewer.activate(message=message)
+                message = None
+            except cli_gui.UserQuitting:
+                return
+            else:
+                message = choice[1](game)
 
-        choice = self.gui.get_input_menu(choices, title="Pick a game to load")
-        if choice == choices["q"]:
-            return
+    def load_game(self, selected):
         self.game = Game(
-            db=self.db, nlp=self.get_nlp_handler(), gameid=choice[1]
+            db=self.db, nlp=self.get_nlp_handler(), gameid=selected[0]
         )
-
         self.gui.start_gameroom(
             choices=self.game_actions, game=self.game, status="Game loaded"
         )
         self.start_game_input_loop()
 
+    def delete_game(self, gamedata):
+        self.db.delete_game(gamedata[0])
+        return "Game deleted"
+
     def edit_config(self):
         self.config.write(open(default_configfile, "w"))
         self.secrets.write(open(default_secretsfile, "w"))
 
-    def start_new_game(self):
+    def start_new_game(self, _):
         self.game = Game(db=self.db, nlp=self.get_nlp_handler())
         title = self.gui.get_line_input("An initial title for the story? ")
         self.game.set_title(title)

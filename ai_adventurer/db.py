@@ -78,6 +78,13 @@ class Database(object):
             session.commit()
             return game.gameid
 
+    def delete_game(self, gameid):
+        assert isinstance(gameid, int)
+        with orm.Session(self._engine) as session:
+            game = self._get_game(gameid, _session=session)
+            session.delete(game)
+            session.commit()
+
     def _get_game(self, gameid, _session=None):
         if not _session:
             _session = orm.Session(self._engine)
