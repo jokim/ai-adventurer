@@ -22,7 +22,7 @@ class NLPThread(object):
 
     """
 
-    def __init__(self, secrets=None):
+    def __init__(self, secrets=None, extra=None):
         self.secrets = secrets
 
     def prompt(self, text=None):
