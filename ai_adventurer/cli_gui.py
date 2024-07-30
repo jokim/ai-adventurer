@@ -82,12 +82,7 @@ class GUI(object):
                 status = f"You chose badly: {inp!r}"
 
     def print_menu(self, choices, title=None, status=None):
-        # TODO: print header
-        print(self.term.home + self.term.on_black + self.term.clear)
-        print(self.term.move_down(2))
-        if title:
-            print(self.term.bold(title))
-            print(self.term.move_down(1))
+        self.print_header(title=title)
 
         for key, options in choices.items():
             if key == "KEY_ENTER":
@@ -113,14 +108,19 @@ class GUI(object):
             end="",
         )
 
+    def print_header(self, title=None):
+        """Clears the screen and adds the header line"""
+        if not title:
+            title = "AI adventurer"
+        print(self.term.home + self.term.on_black + self.term.clear, end="")
+        print(self.term.center(self.term.green_bold(title)))
+        print(self.term.darkgrey("\u2500" * self.term.width))
+
     def print_screen(self, status=""):
         """Print the game screen, with all details."""
         # Note: Smaller screens haven't been tested or adjusted for yet
 
-        # Header
-        print(self.term.home + self.term.on_black + self.term.clear, end="")
-        print(self.term.center(self.term.green_bold("AI adventurer")))
-        print(self.term.darkgrey("-" * self.term.width))
+        self.print_header()
 
         # Main content
         # TODO: Fix all the lines properly, but just print them dumbly for now

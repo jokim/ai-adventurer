@@ -100,9 +100,7 @@ class GameController(object):
             "q": ("Quit", self.quit),
         }
         while True:
-            choice = self.gui.get_input_menu(
-                choices, title="Welcome, adventurer"
-            )
+            choice = self.gui.get_input_menu(choices)
 
             # TODO: hack for exiting the loop and quitting
             if choice == choices["q"]:
