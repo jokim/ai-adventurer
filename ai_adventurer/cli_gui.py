@@ -119,11 +119,7 @@ class GUI(object):
     def print_screen(self, status=""):
         """Print the game screen, with all details."""
         # Note: Smaller screens haven't been tested or adjusted for yet
-
         self.print_header()
-
-        # Main content
-        # TODO: Fix all the lines properly, but just print them dumbly for now
         self.print_content(self._game.lines, self._game.focus)
 
         # Footer
