@@ -263,9 +263,11 @@ class Game(object):
     def save(self):
         self.db.save_game(self)
 
-    @staticmethod
-    def cleanup_text(text):
-        """Remove some unncessary whitespace"""
+    @classmethod
+    def cleanup_text(cls, text):
+        """Remove some unnecessary whitespace"""
+        if isinstance(text, (list, tuple)):
+            return [cls.cleanup_text(t) for t in text]
         # Replace multiple newlines with at most two (keeping paragraphs)
         text = re.sub(r"\n{3,}", "\n\n", text)
         # Replace multiple spaces with a single space
@@ -302,15 +304,17 @@ class Game(object):
         # the APIs have its own parameter for that? Or are there no difference?
         prompt = [remove_comments(self.instructions)]
         details = remove_comments(self.details)
-        prompt.append(f"\n---\nThe title of the story: '{self.title}'\n")
+        prompt.append(f"\n---\nThe title of the story: '{self.title}'")
         if details.strip():
-            prompt.append("\n---\nImportant details about the story:\n")
+            prompt.append("\n---\nImportant details about the story:")
             prompt.append(details)
 
-        prompt.append("\n---\nAnd here is the story so far:\n")
+        prompt.append("\n---\nAnd here is the story so far:")
         prompt.extend(self.lines)
         if text:
             prompt.append(text)
+
+        prompt = self.cleanup_text(prompt)
 
         # TODO: check if all APIs support lists of just text
         return self.cleanup_text(self.nlp.prompt(prompt))
