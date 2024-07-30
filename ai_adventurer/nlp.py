@@ -14,7 +14,7 @@ from google.generativeai.types import HarmCategory, HarmBlockThreshold
 
 logger = logging.getLogger(__name__)
 
-default_local_model = 'data/gpt2base.keras'
+default_local_model = "data/gpt2base.keras"
 
 
 class NLPThread(object):
@@ -39,17 +39,18 @@ class MockNLPThread(NLPThread):
     """Simulating NLP behaviour"""
 
     replies = (
-        'The guy asked around.',
-        'The girl looked at you.',
+        "The guy asked around.",
+        "The girl looked at you.",
         '"What?!" she asked, looking at you.',
         '"Well well well," he said.',
-        )
+    )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
     def prompt(self, text=None):
         import random
+
         response = random.choice(self.replies)
         return response
 
@@ -70,6 +71,7 @@ class LocalNLPThread(NLPThread):
 
     def _load_model(self, nlp_file):
         import keras
+
         # import keras_nlp
         model = keras.saving.load_model(nlp_file, compile=True)
         return model
@@ -78,7 +80,7 @@ class LocalNLPThread(NLPThread):
         super().prompt(text)
 
         if isinstance(text, (list, tuple)):
-            text = '\n'.join(text)
+            text = "\n".join(text)
 
         output = self._generate(text)
 
@@ -91,8 +93,7 @@ class LocalNLPThread(NLPThread):
 
         start = time.time()
         output = self.model.generate(
-                        pretext,
-                        max_length=min(1024, len(pretext) + 40)
+            pretext, max_length=min(1024, len(pretext) + 40)
         ).strip()
         end = time.time()
 
@@ -103,29 +104,29 @@ class LocalNLPThread(NLPThread):
 
 class OpenAINLPThread(NLPThread):
 
-    openai_model = 'gpt-4o-mini'
+    openai_model = "gpt-4o-mini"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.client = OpenAI(api_key=self.secrets['DEFAULT']['openai-key'])
+        self.client = OpenAI(api_key=self.secrets["DEFAULT"]["openai-key"])
 
     def prompt(self, text):
         # Reformat the prompt to follow OpenAIs specs:
         new_text = []
         for t in text:
-            new_text.append({'role': 'user', 'content': t})
+            new_text.append({"role": "user", "content": t})
 
         answer = self.client.chat.completions.create(
-                    model=self.openai_model,
-                    messages=new_text,
-                    stream=False,
+            model=self.openai_model,
+            messages=new_text,
+            stream=False,
         )
         return answer.choices[0].message.content
 
 
 class GeminiNLPThread(NLPThread):
 
-    google_model = 'gemini-1.5-flash'
+    google_model = "gemini-1.5-flash"
 
     # Google's tresholds are very sensitive, so need to adjust these. Keep low
     # for now.
@@ -142,30 +143,29 @@ class GeminiNLPThread(NLPThread):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        genai.configure(api_key=self.secrets['DEFAULT']['gemini-key'])
+        genai.configure(api_key=self.secrets["DEFAULT"]["gemini-key"])
         self.client = genai.GenerativeModel(
-                                self.google_model,
-                                safety_settings=self.safety_settings
+            self.google_model, safety_settings=self.safety_settings
         )
 
     def prompt(self, text):
         logger.debug("Generating with prompt: '%s'", text)
         answer = self.client.generate_content(
-                    contents=text,
+            contents=text,
         )
         logger.debug("Response from Gemini: '%s'", answer.text)
         return answer.text
 
 
 models = {
-        'gemini-1.5-flash': GeminiNLPThread,
-        'gemini-1.5-pro': GeminiNLPThread,
-        'gemini-1.0-pro': GeminiNLPThread,
-        'gpt-4o-mini': OpenAINLPThread,
-        'gpt-4o': OpenAINLPThread,
-        'mock': MockNLPThread,
-        # TODO: would probably also need a file name
-        'local': LocalNLPThread,
+    "gemini-1.5-flash": GeminiNLPThread,
+    "gemini-1.5-pro": GeminiNLPThread,
+    "gemini-1.0-pro": GeminiNLPThread,
+    "gpt-4o-mini": OpenAINLPThread,
+    "gpt-4o": OpenAINLPThread,
+    "mock": MockNLPThread,
+    # TODO: would probably also need a file name
+    "local": LocalNLPThread,
 }
 
 

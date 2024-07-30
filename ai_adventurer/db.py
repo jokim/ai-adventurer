@@ -13,7 +13,7 @@ import sqlalchemy.orm as orm
 
 logger = logging.getLogger(__name__)
 
-default_db_file = 'sqlite:///data/database.sqlite3'
+default_db_file = "sqlite:///data/database.sqlite3"
 
 
 class _Base(orm.DeclarativeBase):
@@ -21,7 +21,7 @@ class _Base(orm.DeclarativeBase):
 
 
 class Game(_Base):
-    __tablename__ = 'games'
+    __tablename__ = "games"
 
     gameid: orm.Mapped[int] = orm.mapped_column(primary_key=True)
     title: orm.Mapped[Optional[str]]
@@ -29,8 +29,7 @@ class Game(_Base):
     details: orm.Mapped[Optional[str]]
 
     lines: orm.Mapped[List["Line"]] = orm.relationship(
-        back_populates="game",
-        cascade="all, delete-orphan"
+        back_populates="game", cascade="all, delete-orphan"
     )
 
     def __repr__(self) -> str:
@@ -38,10 +37,10 @@ class Game(_Base):
 
 
 class Line(_Base):
-    __tablename__ = 'lines'
+    __tablename__ = "lines"
 
     gameid: orm.Mapped[int] = orm.mapped_column(
-        sqlalchemy.ForeignKey('games.gameid'),
+        sqlalchemy.ForeignKey("games.gameid"),
         primary_key=True,
     )
     lineid: orm.Mapped[int] = orm.mapped_column(
@@ -49,23 +48,19 @@ class Line(_Base):
     )
     text: orm.Mapped[Optional[str]]
 
-    game: orm.Mapped["Game"] = orm.relationship(
-            back_populates="lines"
-    )
+    game: orm.Mapped["Game"] = orm.relationship(back_populates="lines")
 
     def __repr__(self) -> str:
         ret = f"Line(game={self.gameid!r}, line={self.lineid!r}"
         if self.text:
             ret += f", text={self.text[:20]!r}…"
-        ret += ')'
+        ret += ")"
 
         return ret
 
 
 class Database(object):
-    """Handler of game saves.
-
-    """
+    """Handler of game saves."""
 
     def __init__(self, db_file=None):
         if db_file:
@@ -76,7 +71,7 @@ class Database(object):
         self._engine = sqlalchemy.create_engine(self._db_file)
         _Base.metadata.create_all(self._engine)
 
-    def create_new_game(self, title=''):
+    def create_new_game(self, title=""):
         with orm.Session(self._engine) as session:
             game = Game(title=title)
             session.add(game)
@@ -86,17 +81,18 @@ class Database(object):
     def _get_game(self, gameid, _session=None):
         if not _session:
             _session = orm.Session(self._engine)
-        for game in _session.scalars(sqlalchemy.select(Game)
-                                     .where(Game.gameid == gameid)):
+        for game in _session.scalars(
+            sqlalchemy.select(Game).where(Game.gameid == gameid)
+        ):
             return game
 
     def get_game(self, gameid, _session=None):
         game = self._get_game(gameid=gameid, _session=_session)
         return {
-            'gameid': game.gameid,
-            'title': game.title,
-            'instructions': game.instructions,
-            'details': game.details,
+            "gameid": game.gameid,
+            "title": game.title,
+            "instructions": game.instructions,
+            "details": game.details,
         }
 
     def get_games(self, _session=None):
@@ -104,20 +100,23 @@ class Database(object):
             _session = orm.Session(self._engine)
         ret = []
         for game in _session.scalars(sqlalchemy.select(Game)):
-            ret.append({
-                'gameid': game.gameid,
-                'title': game.title,
-                'instructions': game.instructions,
-                'details': game.details,
-            })
+            ret.append(
+                {
+                    "gameid": game.gameid,
+                    "title": game.title,
+                    "instructions": game.instructions,
+                    "details": game.details,
+                }
+            )
         return ret
 
     def get_lines(self, gameid, _session=None):
         if not _session:
             _session = orm.Session(self._engine)
         ret = []
-        for line in _session.scalars(sqlalchemy.select(Line)
-                                     .where(Line.gameid == gameid)):
+        for line in _session.scalars(
+            sqlalchemy.select(Line).where(Line.gameid == gameid)
+        ):
             ret.append(line.text)
         return ret
 
@@ -132,11 +131,13 @@ class Database(object):
         # This blindly overwrites the existing lines. Probably a better way.
         line_struct = []
         for lineno, line in enumerate(game.lines):
-            line_struct.append(Line(
-                gameid=db_game.gameid,
-                lineid=lineno,
-                text=line,
-            ))
+            line_struct.append(
+                Line(
+                    gameid=db_game.gameid,
+                    lineid=lineno,
+                    text=line,
+                )
+            )
 
         db_game.lines = line_struct
         session.commit()

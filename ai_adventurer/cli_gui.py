@@ -36,13 +36,13 @@ class GUI(object):
     def edit_line(self, old_text):
         """Ask user to edit given text and return the new one."""
         # Just make use of an editor instead
-        with tempfile.NamedTemporaryFile(mode='w+', suffix='.txt') as tmpfile:
+        with tempfile.NamedTemporaryFile(mode="w+", suffix=".txt") as tmpfile:
             tmpfile.write(old_text)
             tmpfile.flush()
 
             # TODO: Choose your preferred editor, adjust the command
             # accordingly
-            editor_command = ['vim', tmpfile.name]
+            editor_command = ["vim", tmpfile.name]
             subprocess.run(editor_command)
 
             tmpfile.seek(0)
@@ -50,10 +50,12 @@ class GUI(object):
 
         return new_text
 
-    def get_line_input(self, question='Add a new line: '):
+    def get_line_input(self, question="Add a new line: "):
         """Ask the user to write a line."""
-        print(self.term.move_xy(0, self.term.height - 2) +
-              self.term.clear_eol, end='')
+        print(
+            self.term.move_xy(0, self.term.height - 2) + self.term.clear_eol,
+            end="",
+        )
         newline = input(question).strip()
         return newline
 
@@ -88,16 +90,16 @@ class GUI(object):
             print(self.term.move_down(1))
 
         for key, options in choices.items():
-            if key == 'KEY_ENTER':
-                key = 'Enter'
-            print(self.term.bold(str(key)) + ' - ' + options[0])
+            if key == "KEY_ENTER":
+                key = "Enter"
+            print(self.term.bold(str(key)) + " - " + options[0])
         print()
         if status:
             print()
             print(status)
         # TODO: Any footer to print?
 
-    def start_gameroom(self, choices, game, status=''):
+    def start_gameroom(self, choices, game, status=""):
         """Show the initial GUI for when in a game"""
         self._choices = choices
         self._game = game
@@ -105,37 +107,38 @@ class GUI(object):
 
     def send_message(self, message):
         """Send a message to the status field on the screen"""
-        print(self.term.move_xy(1, self.term.height - 3), end='')
-        print(self.term.ljust(message,
-                              width=self.term.width - 1,
-                              fillchar=' '),
-              end='')
+        print(self.term.move_xy(1, self.term.height - 3), end="")
+        print(
+            self.term.ljust(message, width=self.term.width - 1, fillchar=" "),
+            end="",
+        )
 
     def print_screen(self, status=""):
         """Print the game screen, with all details."""
         # Note: Smaller screens haven't been tested or adjusted for yet
 
         # Header
-        print(self.term.home + self.term.on_black + self.term.clear, end='')
+        print(self.term.home + self.term.on_black + self.term.clear, end="")
         print(self.term.center(self.term.green_bold("AI adventurer")))
-        print(self.term.darkgrey('-' * self.term.width))
+        print(self.term.darkgrey("-" * self.term.width))
 
         # Main content
         # TODO: Fix all the lines properly, but just print them dumbly for now
         self.print_content(self._game.lines, self._game.focus)
 
         # Footer
-        print(self.term.move_xy(0, self.term.height - 4), end='')
+        print(self.term.move_xy(0, self.term.height - 4), end="")
         # status line
-        print(self.term.darkgrey('-' * self.term.width))
-        print(' ' + status)
-        print(self.term.darkgrey('-' * self.term.width))
+        print(self.term.darkgrey("-" * self.term.width))
+        print(" " + status)
+        print(self.term.darkgrey("-" * self.term.width))
         submenu = []
         for key, data in self._choices.items():
-            submenu.append(f'[{self.term.bold}{key}{self.term.normal}] ' +
-                           f'{data[0]}')
+            submenu.append(
+                f"[{self.term.bold}{key}{self.term.normal}] " + f"{data[0]}"
+            )
 
-        print(' ' + ' '.join(submenu), end='')
+        print(" " + " ".join(submenu), end="")
 
     def print_content(self, lines, focus):
         """Fill the main content area with the last lines"""
@@ -144,7 +147,7 @@ class GUI(object):
         y_pos = y_max
 
         # Start at the bottom and work upwards
-        print(self.term.move_xy(0, y_pos), end='')
+        print(self.term.move_xy(0, y_pos), end="")
 
         # Focus defaults to -1, which is the last line
         if focus == -1:
@@ -156,18 +159,18 @@ class GUI(object):
             rows = self.term.wrap(line, width=min(self.term.width - 10, 120))
             # Make sure blank rows are included
             if not rows:
-                rows.append('')
+                rows.append("")
             for row in reversed(rows):
                 if i == focus:
-                    print(self.term.standout, end='')
-                print('%3d   ' % i, end='')
-                print(row, end='')
-                print(self.term.normal, end='')
+                    print(self.term.standout, end="")
+                print("%3d   " % i, end="")
+                print(row, end="")
+                print(self.term.normal, end="")
 
                 y_pos -= 1
                 if y_pos <= y_min:
                     return
-                print(self.term.move_xy(0, y_pos), end='')
+                print(self.term.move_xy(0, y_pos), end="")
 
             i -= 1
 

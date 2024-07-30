@@ -12,8 +12,8 @@ import db
 
 logger = logging.getLogger(__name__)
 
-default_configfile = 'config.ini'
-default_secretsfile = 'secrets.ini'
+default_configfile = "config.ini"
+default_secretsfile = "secrets.ini"
 
 
 default_instructions = """
@@ -57,9 +57,9 @@ def remove_comments(text):
     ret = []
     for line in text.splitlines():
         line = line.lstrip()
-        if not line.startswith('#'):
+        if not line.startswith("#"):
             ret.append(line)
-    return '\n'.join(ret)
+    return "\n".join(ret)
 
 
 class GameController(object):
@@ -72,17 +72,17 @@ class GameController(object):
         self.db = db.Database()
 
         self.game_actions = {
-            'j': ("Down", self.shift_focus_down),
-            'k': ("Up", self.shift_focus_up),
-            'r': ("Retry", self.retry),
-            'e': ("Edit", self.edit_active_line),
-            'd': ("Del", self.delete_active_line),
-            'a': ("Add", self.add_line),
-            't': ("Title", self.edit_title),
-            's': ("Story", self.edit_story_details),
-            'i': ("Instruct", self.edit_instructions),
-            'q': ("Quit", self.quit_game),
-            'KEY_ENTER': ('Next', self.next_line),
+            "j": ("Down", self.shift_focus_down),
+            "k": ("Up", self.shift_focus_up),
+            "r": ("Retry", self.retry),
+            "e": ("Edit", self.edit_active_line),
+            "d": ("Del", self.delete_active_line),
+            "a": ("Add", self.add_line),
+            "t": ("Title", self.edit_title),
+            "s": ("Story", self.edit_story_details),
+            "i": ("Instruct", self.edit_instructions),
+            "q": ("Quit", self.quit_game),
+            "KEY_ENTER": ("Next", self.next_line),
         }
 
     def run(self):
@@ -91,18 +91,21 @@ class GameController(object):
 
     def start_mainmenu_loop(self):
         choices = {
-            'n': ('New game', self.start_new_game),
-            'l': ('Load game', self.load_game),
-            'c': ('Write config file (config.ini and secrets.ini)',
-                  self.edit_config),
-            'q': ('Quit', self.quit),
+            "n": ("New game", self.start_new_game),
+            "l": ("Load game", self.load_game),
+            "c": (
+                "Write config file (config.ini and secrets.ini)",
+                self.edit_config,
+            ),
+            "q": ("Quit", self.quit),
         }
         while True:
-            choice = self.gui.get_input_menu(choices,
-                                             title="Welcome, adventurer")
+            choice = self.gui.get_input_menu(
+                choices, title="Welcome, adventurer"
+            )
 
             # TODO: hack for exiting the loop and quitting
-            if choice == choices['q']:
+            if choice == choices["q"]:
                 return
             choice[1]()
 
@@ -110,23 +113,24 @@ class GameController(object):
         choices = {}
 
         for game in self.db.get_games():
-            choices[str(game['gameid'])] = (f"{game['title']}", game['gameid'])
-        choices['q'] = ('Quit this menu', None)
+            choices[str(game["gameid"])] = (f"{game['title']}", game["gameid"])
+        choices["q"] = ("Quit this menu", None)
 
         choice = self.gui.get_input_menu(choices, title="Pick a game to load")
-        if choice == choices['q']:
+        if choice == choices["q"]:
             return
-        self.game = Game(db=self.db,
-                         nlp=self.get_nlp_handler(),
-                         gameid=choice[1])
+        self.game = Game(
+            db=self.db, nlp=self.get_nlp_handler(), gameid=choice[1]
+        )
 
-        self.gui.start_gameroom(choices=self.game_actions, game=self.game,
-                                status="Game loaded")
+        self.gui.start_gameroom(
+            choices=self.game_actions, game=self.game, status="Game loaded"
+        )
         self.start_game_input_loop()
 
     def edit_config(self):
-        self.config.write(open(default_configfile, 'w'))
-        self.secrets.write(open(default_secretsfile, 'w'))
+        self.config.write(open(default_configfile, "w"))
+        self.secrets.write(open(default_secretsfile, "w"))
 
     def start_new_game(self):
         self.game = Game(db=self.db, nlp=self.get_nlp_handler())
@@ -135,8 +139,11 @@ class GameController(object):
         self.game.set_instructions(default_instructions)
         self.game.set_details(default_details)
         self.game.add_lines(self.game.get_introduction())
-        self.gui.start_gameroom(choices=self.game_actions, game=self.game,
-                                status="Started new game")
+        self.gui.start_gameroom(
+            choices=self.game_actions,
+            game=self.game,
+            status="Started new game",
+        )
         self.start_game_input_loop()
 
     def start_game_input_loop(self):
@@ -146,7 +153,7 @@ class GameController(object):
                 self.game_actions[inp][1]()
 
                 # TODO: hack for ending game and getting back to main menu
-                if inp == 'q':
+                if inp == "q":
                     return
 
             elif inp.name in self.game_actions:
@@ -180,7 +187,7 @@ class GameController(object):
         newline = self.gui.edit_line(oldline)
         # TODO: what to do if it gets blank? Just save it?
         self.game.change_active_line(newline)
-        self.gui.print_screen('Last line updated')
+        self.gui.print_screen("Last line updated")
 
     def add_line(self):
         """Write a new line/response"""
@@ -192,15 +199,15 @@ class GameController(object):
     def delete_active_line(self):
         """Delete chosen line/response"""
         self.game.delete_active_line()
-        self.gui.print_screen('Line deleted')
+        self.gui.print_screen("Line deleted")
 
     def edit_title(self):
         new_title = self.gui.edit_line(self.game.title)
         if new_title:
             self.game.set_title(new_title)
-            self.gui.print_screen('Title updated')
+            self.gui.print_screen("Title updated")
         else:
-            self.gui.print_screen('Title not updated')
+            self.gui.print_screen("Title not updated")
 
     def edit_instructions(self):
         new_instructions = self.gui.edit_line(self.game.instructions)
@@ -209,7 +216,7 @@ class GameController(object):
             new_instructions = default_instructions
 
         self.game.set_instructions(new_instructions)
-        self.gui.print_screen('Instructions updated')
+        self.gui.print_screen("Instructions updated")
 
     def edit_story_details(self):
         new_details = self.gui.edit_line(self.game.details)
@@ -218,7 +225,7 @@ class GameController(object):
             new_details = default_details
 
         self.game.set_details(new_details)
-        self.gui.print_screen('Story summary updated')
+        self.gui.print_screen("Story summary updated")
 
     def quit_game(self):
         self.gui.send_message("Quit this game")
@@ -228,8 +235,8 @@ class GameController(object):
         print("Quitter...")
 
     def get_nlp_handler(self):
-        if not hasattr(self, 'nlp'):
-            nlp_class = nlp.get_nlp_class(self.config['DEFAULT']['nlp_model'])
+        if not hasattr(self, "nlp"):
+            nlp_class = nlp.get_nlp_class(self.config["DEFAULT"]["nlp_model"])
             self.nlp = nlp_class(secrets=self.secrets)
         return self.nlp
 
@@ -244,15 +251,15 @@ class Game(object):
         if gameid:
             self.gameid = gameid
             db_game = self.db.get_game(gameid)
-            self.instructions = db_game['instructions']
-            self.details = db_game['details']
-            self.title = db_game['title']
+            self.instructions = db_game["instructions"]
+            self.details = db_game["details"]
+            self.title = db_game["title"]
             self.lines = self.db.get_lines(gameid)
         else:
             self.lines = []
-            self.instructions = ''
-            self.details = ''
-            self.title = 'Test 123'
+            self.instructions = ""
+            self.details = ""
+            self.title = "Test 123"
             self.gameid = db.create_new_game(self.title)
 
     def save(self):
@@ -262,9 +269,9 @@ class Game(object):
     def cleanup_text(text):
         """Remove some unncessary whitespace"""
         # Replace multiple newlines with at most two (keeping paragraphs)
-        text = re.sub(r'\n{3,}', '\n\n', text)
+        text = re.sub(r"\n{3,}", "\n\n", text)
         # Replace multiple spaces with a single space
-        text = re.sub(r'[ \t\r\f\v]+', ' ', text)
+        text = re.sub(r"[ \t\r\f\v]+", " ", text)
         return text
 
     def set_instructions(self, text):
@@ -302,7 +309,7 @@ class Game(object):
             prompt.append("\n---\nImportant details about the story:\n")
             prompt.append(details)
 
-        prompt.append('\n---\nAnd here is the story so far:\n')
+        prompt.append("\n---\nAnd here is the story so far:\n")
         prompt.extend(self.lines)
         if text:
             prompt.append(text)
@@ -319,7 +326,7 @@ class Game(object):
             prompt.append("\n---\nImportant details about the story:\n")
             prompt.append(details)
 
-        prompt.append('\n---\nGive me three sentences that starts this story.')
+        prompt.append("\n---\nGive me three sentences that starts this story.")
         return self.cleanup_text(self.nlp.prompt(prompt))
 
     def generate_next_lines(self, instructions=None):
@@ -387,9 +394,9 @@ class Game(object):
 def load_config(config_file, args):
     """Using a simple INI file by now"""
     default_settings = {
-        'DEFAULT': {
+        "DEFAULT": {
             # See ai_adventurer/nlp.py for available models
-            'nlp_model': 'gemini-1.5-flash',
+            "nlp_model": "gemini-1.5-flash",
         },
     }
     config = configparser.ConfigParser()
@@ -398,7 +405,7 @@ def load_config(config_file, args):
 
     # Override with command-line arguments
     if args.nlp_model:
-        config['DEFAULT']['nlp_model'] = args.nlp_model
+        config["DEFAULT"]["nlp_model"] = args.nlp_model
 
     return config
 
@@ -406,9 +413,9 @@ def load_config(config_file, args):
 def load_secrets(config_file):
     """I like to have the secrets separated from the rest of the config."""
     default_settings = {
-        'DEFAULT': {
-            'openai-key': 'CHANGEME',
-            'gemini-key': 'CHANGEME',
+        "DEFAULT": {
+            "openai-key": "CHANGEME",
+            "gemini-key": "CHANGEME",
         },
     }
     config = configparser.ConfigParser()
@@ -421,48 +428,50 @@ def load_secrets(config_file):
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Run the AI adventurer game in the terminal'
+        description="Run the AI adventurer game in the terminal"
     )
     parser.add_argument(
-        '-d',
-        '--debug',
-        action='store_true',
-        help='Log debug data to file, for development',
+        "-d",
+        "--debug",
+        action="store_true",
+        help="Log debug data to file, for development",
     )
     parser.add_argument(
-        '--config-file',
+        "--config-file",
         type=str,
-        metavar='FILENAME',
+        metavar="FILENAME",
         default=default_configfile,
-        help='Where the config is located. Default: %(default)s',
+        help="Where the config is located. Default: %(default)s",
     )
     parser.add_argument(
-        '--secrets-file',
+        "--secrets-file",
         type=str,
-        metavar='FILENAME',
+        metavar="FILENAME",
         default=default_secretsfile,
-        help='Where the secrets are located. Default: %(default)s',
+        help="Where the secrets are located. Default: %(default)s",
     )
     parser.add_argument(
-        '--nlp-model',
+        "--nlp-model",
         type=str,
-        metavar='MODEL',
-        help='Which AI NLP model to use',
+        metavar="MODEL",
+        help="Which AI NLP model to use",
     )
     parser.add_argument(
-        '--list-nlp-models',
-        action='store_true',
-        help='List available AI NLP models'
+        "--list-nlp-models",
+        action="store_true",
+        help="List available AI NLP models",
     )
 
     args = parser.parse_args()
 
     if args.debug:
-        logging.basicConfig(filename='logger.log', encoding='utf-8',
-                            level=logging.DEBUG)
+        logging.basicConfig(
+            filename="logger.log", encoding="utf-8", level=logging.DEBUG
+        )
     else:
-        logging.basicConfig(filename='logger.log', encoding='utf-8',
-                            level=logging.WARNING)
+        logging.basicConfig(
+            filename="logger.log", encoding="utf-8", level=logging.WARNING
+        )
 
     if args.list_nlp_models:
         for m in nlp.models:
@@ -478,5 +487,5 @@ def main():
     logger.debug("Stopping game")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
