@@ -1,12 +1,14 @@
 # AI adventurer
 
-Supposed to be an AI storyteller, where you give input through a terminal (CLI)
-GUI to an AI Natural Language Processing (NLP) model, to get the story going.
+A tiny CLI story helper game, making use of AI (NLP) prompts to generate next
+events in a story you and the AI create.
 
-This is written to get an understanding of NLP, so don't expect too much.
+Don't expect much, as this is written most for me to get an understanding of
+AI.
 
-I tested a local AI model, but since a simple laptop can't do much, I also
-tested various online AI services, like OpenAI and Googles Gemini.
+The game is set up to talk with OpenAI (GPT4o) and Googles Gemini. You need API
+keys to make use of it. I also tested local AI models, but the model is not
+included. Go see HuggingFace or Keras for that.
 
 
 ## Setup
@@ -14,4 +16,9 @@ tested various online AI services, like OpenAI and Googles Gemini.
 ```
 poetry run ai_adventurer/run.py
 ```
+
+### Configuration
+
+If you start the game and push 'c' in the start menu, it will create two files:
+`config.ini` and `secrets.ini` (for API keys).
 
