@@ -31,6 +31,7 @@ class GUI(object):
         self.term = Terminal()
 
     def activate(self):
+        """Activate fullscreen mode of the terminal"""
         return self.term.fullscreen()
 
     def get_keyinput(self):
@@ -87,6 +88,7 @@ class GUI(object):
                 status = f"You chose badly: {inp!r}"
 
     def print_menu(self, choices, title=None, status=None):
+        """Print a menu with the given choices."""
         self.print_header(title=title)
 
         for key, options in choices.items():
