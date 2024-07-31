@@ -104,8 +104,11 @@ class HuggingfaceNLPThread(NLPThread):
 
     def _load_model(self, modelid):
         from transformers import pipeline
+        import torch
         logger.debug(f"Try to load HF model {modelid!r}")
-        return pipeline("text-generation", model=modelid)
+        return pipeline("text-generation", model=modelid,
+                        model_kwargs={"torch_dtype": torch.bfloat16},
+                        device_map="auto")
 
     def prompt(self, text):
         super().prompt(text)
