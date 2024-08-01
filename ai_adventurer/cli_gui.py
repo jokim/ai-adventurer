@@ -155,6 +155,9 @@ class GUI(object):
         # Focus defaults to -1, which is the last line
         if focus == -1:
             focus = len(lines) - 1
+        # The focus might have moved past the last line
+        if focus > len(lines) - 1:
+            focus = len(lines) - 1
 
         # Walk backward, from the bottom, and stop when you reach y_min
         # Let the active line be at the bottom
@@ -163,6 +166,9 @@ class GUI(object):
         if line_nr < len(lines) - 1:
             line_nr = focus + 1
 
+        if len(lines) == 0:
+            print(self.term.gray("No content yet..."))
+            return
         while line_nr >= 0:
             line = lines[line_nr]
             rows = self.term.wrap(line, width=min(self.term.width - 10, 120))
