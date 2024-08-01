@@ -93,17 +93,13 @@ class GameController(object):
         choices = {
             "n": ("New game", self.start_new_game),
             "l": ("Load game", self.start_game_lister),
-            "c": (
-                "Write config file (config.ini and secrets.ini)",
-                self.edit_config,
-            ),
-            "q": ("Quit", self.quit),
+            "c": ("Write config file (config.ini and secrets.ini)",
+                  self.edit_config),
         }
         while True:
-            choice = self.gui.get_input_menu(choices)
-
-            # TODO: hack for exiting the loop and quitting
-            if choice == choices["q"]:
+            try:
+                choice = self.gui.start_input_menu(choices)
+            except cli_gui.UserQuitting:
                 return
             choice[1]()
 
@@ -148,7 +144,7 @@ class GameController(object):
 
     def start_new_game(self, _):
         self.game = Game(db=self.db, nlp=self.get_nlp_handler())
-        title = self.gui.get_line_input("An initial title for the story? ")
+        title = self.gui.start_input_line("An initial title for the story? ")
         self.game.set_title(title)
         self.game.set_instructions(default_instructions)
         self.game.set_details(default_details)
@@ -162,7 +158,7 @@ class GameController(object):
 
     def start_game_input_loop(self):
         while True:
-            inp = self.gui.get_keyinput()
+            inp = self.gui.start_input_key()
             if inp in self.game_actions:
                 self.game_actions[inp][1]()
 
@@ -198,14 +194,14 @@ class GameController(object):
     def edit_active_line(self):
         """Edit chosen line/response"""
         _, oldline = self.game.get_active_line()
-        newline = self.gui.edit_line(oldline)
+        newline = self.gui.start_input_edit_text(oldline)
         # TODO: what to do if it gets blank? Just save it?
         self.game.change_active_line(newline)
         self.gui.print_screen("Last line updated")
 
     def add_line(self):
         """Write a new line/response"""
-        newline = self.gui.get_line_input()
+        newline = self.gui.start_input_line()
         if newline:
             self.game.add_lines(newline)
         self.gui.print_screen()
@@ -216,7 +212,7 @@ class GameController(object):
         self.gui.print_screen("Line deleted")
 
     def edit_title(self):
-        new_title = self.gui.edit_line(self.game.title)
+        new_title = self.gui.start_input_edit_text(self.game.title)
         if new_title:
             self.game.set_title(new_title)
             self.gui.print_screen("Title updated")
@@ -224,7 +220,8 @@ class GameController(object):
             self.gui.print_screen("Title not updated")
 
     def edit_instructions(self):
-        new_instructions = self.gui.edit_line(self.game.instructions)
+        new_instructions = self.gui.start_input_edit_text(
+            self.game.instructions)
 
         if not remove_comments(new_instructions.strip()).strip():
             new_instructions = default_instructions
@@ -233,7 +230,7 @@ class GameController(object):
         self.gui.print_screen("Instructions updated")
 
     def edit_story_details(self):
-        new_details = self.gui.edit_line(self.game.details)
+        new_details = self.gui.start_input_edit_text(self.game.details)
 
         if not remove_comments(new_details.strip()).strip():
             new_details = default_details

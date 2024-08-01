@@ -34,12 +34,21 @@ class GUI(object):
         """Activate fullscreen mode of the terminal"""
         return self.term.fullscreen()
 
-    def get_keyinput(self):
+    def start_input_key(self):
         """Shortcut for waiting for user key input."""
         with self.term.cbreak(), self.term.hidden_cursor():
             return self.term.inkey()
 
-    def edit_line(self, old_text):
+    def start_input_line(self, question="Add a new line: "):
+        """Ask the user to write a line."""
+        print(
+            self.term.move_xy(0, self.term.height - 2) + self.term.clear_eol,
+            end="",
+        )
+        newline = input(question).strip()
+        return newline
+
+    def start_input_edit_text(self, old_text):
         """Ask user to edit given text and return the new one."""
         # Just make use of an editor instead
         with tempfile.NamedTemporaryFile(mode="w+", suffix=".txt") as tmpfile:
@@ -56,16 +65,7 @@ class GUI(object):
 
         return new_text
 
-    def get_line_input(self, question="Add a new line: "):
-        """Ask the user to write a line."""
-        print(
-            self.term.move_xy(0, self.term.height - 2) + self.term.clear_eol,
-            end="",
-        )
-        newline = input(question).strip()
-        return newline
-
-    def get_input_menu(self, choices, title=None):
+    def start_input_menu(self, choices, title=None, endkey='q'):
         """Ask the user to chose an option, and return that.
 
         The choice format: keys are the character to push for its choice, and
@@ -74,16 +74,22 @@ class GUI(object):
 
             'n': ('New game', ...),
 
+        The quit option (`endkey`) handled specially, raising UserQuitting.
+
         """
         status = None
+        new_choices = choices.copy()
+        new_choices[endkey] = ('Quit', None)
         while True:
-            self.print_menu(choices, title=title, status=status)
-            inp = self.get_keyinput()
+            self.print_menu(new_choices, title=title, status=status)
+            inp = self.start_input_key()
             if inp in choices:
                 return choices[inp]
             elif inp.name in choices:
                 # This is for characters like 'ENTER_KEY'
                 return choices[inp.name]
+            elif inp == endkey:
+                raise UserQuitting()
             else:
                 status = f"You chose badly: {inp!r}"
 
@@ -136,11 +142,17 @@ class GUI(object):
         print(" " + status)
         submenu = []
         for key, data in self._choices.items():
+            if key == 'KEY_ENTER':
+                key = 'Enter'
             submenu.append(
-                f"[{self.term.bold}{key}{self.term.normal}] " + f"{data[0]}"
+                self.term.gray('[')
+                + self.term.bold(key)
+                + self.term.gray(']')
+                + data[0]
+                # f"[{self.term.bold}{key}{self.term.normal}] " + f"{data[0]}"
             )
 
-        print(" " + " ".join(submenu), end="")
+        print(" ".join(submenu), end="")
 
     def print_content(self, lines, focus):
         """Fill the main content area with the last lines"""
@@ -188,10 +200,15 @@ class GUI(object):
 
             line_nr -= 1
 
-        # TODO: add an indicator, viewing that you are not at the bottom
+
+class EditorWindow(object):
+    """Making the terminal into an editor of data.
+
+    Subclasses handles more specific types of data/text."""
+    pass
 
 
-class TableEditor(object):
+class TableEditor(EditorWindow):
     """Manages the view of a table with data, and input to manipulate it.
 
     This is an attempt to try to generalise the flow a bit more. Probably a
@@ -224,7 +241,7 @@ class TableEditor(object):
         while True:
             self.print_screen(message=message)
             message = None
-            key = self.gui.get_keyinput()
+            key = self.gui.start_input_key()
             if key == 'q':
                 raise UserQuitting()
             elif key == 'j':
