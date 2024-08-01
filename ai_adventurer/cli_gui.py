@@ -130,11 +130,10 @@ class GUI(object):
         self.print_content(self._game.lines, self._game.focus)
 
         # Footer
-        print(self.term.move_xy(0, self.term.height - 4), end="")
+        print(self.term.move_xy(0, self.term.height - 3), end="")
         # status line
         print(self.term.darkgrey("\u2500" * self.term.width))
         print(" " + status)
-        print(self.term.darkgrey("\u2500" * self.term.width))
         submenu = []
         for key, data in self._choices.items():
             submenu.append(
@@ -145,8 +144,8 @@ class GUI(object):
 
     def print_content(self, lines, focus):
         """Fill the main content area with the last lines"""
-        y_min = 2
-        y_max = self.term.height - 5
+        y_min = 1
+        y_max = self.term.height - 4
         y_pos = y_max
 
         # Start at the bottom and work upwards
