@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 class UserQuitting(Exception):
     """Signalling the user quitting e.g. a menu"""
+
     pass
 
 
@@ -65,7 +66,7 @@ class GUI(object):
 
         return new_text
 
-    def start_input_menu(self, choices, title=None, endkey='q'):
+    def start_input_menu(self, choices, title=None, endkey="q"):
         """Ask the user to chose an option, and return that.
 
         The choice format: keys are the character to push for its choice, and
@@ -79,7 +80,7 @@ class GUI(object):
         """
         status = None
         new_choices = choices.copy()
-        new_choices[endkey] = ('Quit', None)
+        new_choices[endkey] = ("Quit", None)
         while True:
             self.print_menu(new_choices, title=title, status=status)
             inp = self.start_input_key()
@@ -107,13 +108,8 @@ class GUI(object):
             print(status)
         # TODO: Any footer to print?
 
-    def start_gameroom(self, choices, game, status=""):
-        """Show the initial GUI for when in a game"""
-        self._choices = choices
-        self._game = game
-        self.print_screen(status=status)
-
     def send_message(self, message):
+        # TODO: move this to GameWindow somehow
         """Send a message to the status field on the screen"""
         print(self.term.move_xy(1, self.term.height - 3), end="")
         print(
@@ -121,44 +117,229 @@ class GUI(object):
             end="",
         )
 
-    def print_header(self, title=None):
+
+class Window(object):
+    """Managing the terminal as a windows with something.
+
+    Subclasses handles more specific types of data/text.
+
+    Thought behind the flow:
+
+    - Initiate object with proper data and users choices
+    - .activate() prints and waits for user input
+    - Special input, like moving up or down, is handled by the object
+    - The users choice is returned. This means the controller needs to loop
+      over `.activate()` if you expect the user to do more in the window
+
+    """
+
+    game_title = "AI adventurer"
+
+    def __init__(self, gui, choices, endkey="q"):
+        self.gui = gui
+        self.term = gui.term
+        self.choices = choices
+        self.endkey = endkey
+        self.internal_choices = {endkey: ("Quit", None)}
+
+    def activate(self, message=None):
+        pass
+
+    def _print_header(self, title=None):
         """Clears the screen and adds the header line"""
-        if not title:
-            title = "AI adventurer"
+        if title:
+            title = f"{title} - {self.game_title}"
+        else:
+            title = self.game_title
         print(self.term.home + self.term.on_black + self.term.clear, end="")
         print(self.term.center(self.term.green_bold(title)))
         print(self.term.darkgrey("\u2500" * self.term.width))
 
-    def print_screen(self, status=""):
-        """Print the game screen, with all details."""
-        # Note: Smaller screens haven't been tested or adjusted for yet
-        self.print_header()
-        self.print_content(self._game.lines, self._game.focus)
-
-        # Footer
+    def _print_footer_menu(self, message=None):
+        # TODO: handle smaller terminal windows
         print(self.term.move_xy(0, self.term.height - 3), end="")
-        # status line
         print(self.term.darkgrey("\u2500" * self.term.width))
-        print(" " + status)
-        submenu = []
-        for key, data in self._choices.items():
-            if key == 'KEY_ENTER':
-                key = 'Enter'
-            submenu.append(
-                self.term.gray('[')
-                + self.term.bold(key)
-                + self.term.gray(']')
-                + data[0]
-                # f"[{self.term.bold}{key}{self.term.normal}] " + f"{data[0]}"
-            )
+        print(message or "")
 
+        choices = self.choices.copy()
+        choices.update(self.internal_choices)
+
+        submenu = []
+        for key, data in choices.items():
+            if key == "KEY_ENTER":
+                key = "Enter"
+            submenu.append(
+                self.term.gray("[")
+                + self.term.bold(key)
+                + self.term.gray("]")
+                + data[0]
+            )
         print(" ".join(submenu), end="")
 
-    def print_content(self, lines, focus):
+
+class MenuWindow(Window):
+    """Simple menu window"""
+
+    def activate(self, message=None):
+        super().activate(message=message)
+        while True:
+            self._print_screen(message=message)
+            inp = self.gui.start_input_key()
+            if inp in self.choices:
+                return self.choices[inp]
+            elif inp.name in self.choices:
+                # This is for characters like 'ENTER_KEY'
+                return self.choices[inp.name]
+            elif inp == self.endkey:
+                raise UserQuitting()
+            else:
+                message = f"You chose badly: {inp!r}"
+
+    def _print_screen(self, message=None):  # title=None TODO
+        """Print a menu with the given choices."""
+        self._print_header()
+
+        for key, options in self.choices.items():
+            if key == "KEY_ENTER":
+                key = "Enter"
+            print(self.term.bold(str(key)) + " - " + options[0])
+        for key, options in self.internal_choices.items():
+            if key == "KEY_ENTER":
+                key = "Enter"
+            print(self.term.bold(str(key)) + " - " + options[0])
+        print()
+        if message:
+            print()
+            print(message)
+        # TODO: Any footer to print?
+
+
+class EditorWindow(Window):
+    """Handles data with more editor functionality"""
+
+    def __init__(self, gui, choices, data):
+        super().__init__(gui, choices)
+        self.data = data
+        self.focus = 0
+        self.internal_choices.update(
+            {
+                "j": ("Down", None),
+                "k": ("Up", None),
+            }
+        )
+
+    def activate(self, message=None):
+        while True:
+            self._print_screen(message=message)
+            message = None
+            key = self.gui.start_input_key()
+            if key == "q":
+                raise UserQuitting()
+            elif key == "j":
+                self.shift_focus_down()
+                continue
+            elif key == "k":
+                self.shift_focus_up()
+                continue
+            elif key in self.choices:
+                return (
+                    self.choices[key],
+                    self.focus,
+                    self._get_element(self.focus),
+                )
+            elif key.name in self.choices:
+                return (
+                    self.choices[key.name],
+                    self.focus,
+                    self._get_element(self.focus),
+                )
+            else:
+                message = f"Unknown choice: {key!r}"
+
+    def _get_elements(self):
+        """Get the data that the user could manage. Subclass!"""
+        return self.data
+
+    def _get_element(self, elementid):
+        return self.data[elementid]
+
+    def shift_focus_down(self):
+        # The list starts at 0 at the top, so we increase
+        self.focus += 1
+        # Don't pass the last line
+        if self.focus > len(self._get_elements()) - 1:
+            self.focus = len(self._get_elements()) - 1
+
+    def shift_focus_up(self):
+        # The list starts at 0 at the top, so we decrease
+        self.focus -= 1
+        if self.focus < 0:
+            self.focus = 0
+
+    def set_focus(self, elementid):
+        assert isinstance(elementid, int) and elementid >= -1
+        if elementid == -1:
+            self.focus = len(self._get_elements()) - 1
+        else:
+            self.focus = elementid
+
+
+class TableEditWindow(EditorWindow):
+    """View a simple table with data the user has _simple_ actions on.
+
+    table_data must be a list with lists. Each element is a row, and the
+    internal items gets into columns.
+
+    """
+
+    def __init__(self, gui, choices, data):
+        super().__init__(gui=gui, choices=choices, data=data)
+        # TODO: change to something better than this!
+        self.format = (
+            "%5d ",
+            "%-60s ",
+            "%6s",
+        )
+
+    def _print_screen(self, message=None):
+        self._print_header()
+        # TODO: change to move up and down according in respect of self.focus
+        for i, line in enumerate(self.data):
+            if i == self.focus:
+                print(self.term.standout, end="")
+            for i, element in enumerate(line):
+                formatter = self.format[i]
+                print(formatter % (element,), end="")
+            print(self.term.normal)
+        self._print_footer_menu(message=message)
+
+
+class GameWindow(EditorWindow):
+
+    def __init__(self, gui, choices, game):
+        super().__init__(gui=gui, choices=choices, data=game)
+
+    def _print_screen(self, message=""):
+        """Print the game screen, with all details."""
+        self._print_header()
+        self._print_gamedata()
+        self._print_footer_menu(message=message)
+        return
+
+    def _get_elements(self):
+        return self.data.lines
+
+    def _get_element(self, elementid):
+        return self.data.lines[elementid]
+
+    def _print_gamedata(self):
         """Fill the main content area with the last lines"""
         y_min = 1
         y_max = self.term.height - 4
         y_pos = y_max
+
+        focus = self.focus
+        lines = self.data.lines
 
         # Start at the bottom and work upwards
         print(self.term.move_xy(0, y_pos), end="")
@@ -199,107 +380,3 @@ class GUI(object):
                 print(self.term.move_xy(0, y_pos), end="")
 
             line_nr -= 1
-
-
-class EditorWindow(object):
-    """Making the terminal into an editor of data.
-
-    Subclasses handles more specific types of data/text."""
-    pass
-
-
-class TableEditor(EditorWindow):
-    """Manages the view of a table with data, and input to manipulate it.
-
-    This is an attempt to try to generalise the flow a bit more. Probably a
-    prettier solution than this, but the thought behind this, per now:
-
-    - add_action is called to add menu options, and a callable
-    - if the given option is selected, the callable is called, and given the
-      active row in the table
-    - If the callable returns a string, it is presented to the user as a
-      message
-
-    Some special options are internal for this class, i.e. moving up and down
-    in the table, and exiting the table view.
-
-    """
-
-    def __init__(self, gui, table_data, choices):
-        self.data = table_data
-        self.gui = gui
-        self.focus = 0
-        # TODO: change to something better than this!
-        self.format = ('%5d ', '%-60s ', '%6s',)
-        self.choices = choices
-
-    def add_action(self, key, name, func):
-        self.choices[key] = (name, func)
-
-    def activate(self, message=None):
-        # TODO: what to do if the list is empty? Gives traceback
-        while True:
-            self.print_screen(message=message)
-            message = None
-            key = self.gui.start_input_key()
-            if key == 'q':
-                raise UserQuitting()
-            elif key == 'j':
-                self.shift_focus_down()
-                continue
-            elif key == 'k':
-                self.shift_focus_up()
-                continue
-            elif key in self.choices:
-                return self.choices[key], self.data[self.focus]
-                # message = self.choices[key][1](self.data[self.focus])
-            elif key.name in self.choices:
-                return self.choices[key.name], self.data[self.focus]
-                # message = self.choices[key.name][1](self.data[self.focus])
-            else:
-                message = f"Unknown choice: {key!r}"
-
-    def print_screen(self, message=None):
-        self.gui.print_header()
-        # TODO: change to move up and down according in respect of self.focus
-        for i, line in enumerate(self.data):
-            if i == self.focus:
-                print(self.gui.term.standout, end="")
-
-            for i, element in enumerate(line):
-                formatter = self.format[i]
-                print(formatter % (element,), end='')
-            print(self.gui.term.normal)
-        self.print_footer_menu(message=message)
-
-    def print_footer_menu(self, message=None):
-        print(self.gui.term.move_xy(0, self.gui.term.height - 3), end="")
-        print(self.gui.term.darkgrey("\u2500" * self.gui.term.width))
-        print(message or '')
-
-        choices = self.choices.copy()
-        choices['j'] = ('Down', None)
-        choices['k'] = ('Up', None)
-        choices['q'] = ('Quit', None)
-        submenu = []
-        for key, data in choices.items():
-            if key == "KEY_ENTER":
-                key = "Enter"
-            submenu.append(
-                f"[{self.gui.term.bold}{key}{self.gui.term.normal}] " +
-                f"{data[0]}"
-            )
-        print(" ".join(submenu), end="")
-
-    def shift_focus_down(self):
-        # The list starts at 0 at the top, so we increase
-        self.focus += 1
-        # Don't pass the last line
-        if self.focus > len(self.data) - 1:
-            self.focus = len(self.data) - 1
-
-    def shift_focus_up(self):
-        # The list starts at 0 at the top, so we decrease
-        self.focus -= 1
-        if self.focus < 0:
-            self.focus = 0

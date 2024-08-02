@@ -101,6 +101,7 @@ class Database(object):
             "instructions": game.instructions,
             "details": game.details,
         }
+        # How to also return Lines for the given Game?
 
     def get_games(self, _session=None):
         if not _session:

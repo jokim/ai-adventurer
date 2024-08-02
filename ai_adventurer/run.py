@@ -72,16 +72,13 @@ class GameController(object):
         self.db = db.Database()
 
         self.game_actions = {
-            "j": ("Down", self.shift_focus_down),
-            "k": ("Up", self.shift_focus_up),
-            "r": ("Retry", self.retry),
+            "r": ("Retry", self.retry_line),
             "e": ("Edit", self.edit_active_line),
             "d": ("Del", self.delete_active_line),
             "a": ("Add", self.add_line),
             "t": ("Title", self.edit_title),
             "s": ("Story", self.edit_story_details),
             "i": ("Instruct", self.edit_instructions),
-            "q": ("Quit", self.quit_game),
             "KEY_ENTER": ("Next", self.next_line),
         }
 
@@ -96,12 +93,14 @@ class GameController(object):
             "c": ("Write config file (config.ini and secrets.ini)",
                   self.edit_config),
         }
+        menuwindow = cli_gui.MenuWindow(gui=self.gui, choices=choices)
         while True:
             try:
-                choice = self.gui.start_input_menu(choices)
+                choice = menuwindow.activate()
             except cli_gui.UserQuitting:
                 return
-            choice[1]()
+            else:
+                choice[1]()
 
     def start_game_lister(self):
         choices = {
@@ -115,10 +114,10 @@ class GameController(object):
             games = []
             for game in self.db.get_games():
                 games.append((game['gameid'], game['title'], 'TODO length'))
-            table_viewer = cli_gui.TableEditor(self.gui, games,
-                                               choices=choices)
+            table_viewer = cli_gui.TableEditWindow(self.gui, choices=choices,
+                                                   data=games)
             try:
-                choice, game = table_viewer.activate(message=message)
+                choice, lineid, game = table_viewer.activate(message=message)
                 message = None
             except cli_gui.UserQuitting:
                 return
@@ -126,13 +125,11 @@ class GameController(object):
                 message = choice[1](game)
 
     def load_game(self, selected):
-        self.game = Game(
-            db=self.db, nlp=self.get_nlp_handler(), gameid=selected[0]
-        )
-        self.gui.start_gameroom(
-            choices=self.game_actions, game=self.game, status="Game loaded"
-        )
-        self.start_game_input_loop()
+        self.game = Game(db=self.db, nlp=self.get_nlp_handler(),
+                         gameid=selected[0])
+        gamegui = cli_gui.GameWindow(gui=self.gui, choices=self.game_actions,
+                                     game=self.game)
+        self.start_game_input_loop(self.game, gamegui, message="Game loaded")
 
     def delete_game(self, gamedata):
         self.db.delete_game(gamedata[0])
@@ -144,106 +141,88 @@ class GameController(object):
 
     def start_new_game(self, _):
         self.game = Game(db=self.db, nlp=self.get_nlp_handler())
+        # TODO: change to ask for a concept instead, and let the AI give title
+        # and intro out of that
         title = self.gui.start_input_line("An initial title for the story? ")
         self.game.set_title(title)
         self.game.set_instructions(default_instructions)
         self.game.set_details(default_details)
         self.game.add_lines(self.game.get_introduction())
-        self.gui.start_gameroom(
-            choices=self.game_actions,
-            game=self.game,
-            status="Started new game",
-        )
-        self.start_game_input_loop()
+        gamegui = cli_gui.GameWindow(gui=self.gui, choices=self.game_actions,
+                                     game=self.game)
+        self.start_game_input_loop(self.game, gamegui,
+                                   message="New game started")
 
-    def start_game_input_loop(self):
+    def start_game_input_loop(self, game, gamegui, message=None):
         while True:
-            inp = self.gui.start_input_key()
-            if inp in self.game_actions:
-                self.game_actions[inp][1]()
-
-                # TODO: hack for ending game and getting back to main menu
-                if inp == "q":
-                    return
-
-            elif inp.name in self.game_actions:
-                self.game_actions[inp.name][1]()
+            try:
+                choice, elementid, element = gamegui.activate(message=message)
+            except cli_gui.UserQuitting:
+                return
             else:
-                self.gui.send_message("Invalid command")
+                message = choice[1](game, gamegui, elementid, element)
 
-    def next_line(self):
+    def next_line(self, game, gamegui, lineid, oldline):
         """Generate new text"""
+        # TODO: move this to gamegui somehow...
         self.gui.send_message("Generating more text...")
-        self.game.generate_next_lines()
-        self.gui.print_screen("New text generated")
+        game.generate_next_lines()
+        gamegui.set_focus(-1)
+        return "New text generated"
 
-    def shift_focus_up(self):
-        self.game.set_focus_up()
-        self.gui.print_screen()
-
-    def shift_focus_down(self):
-        self.game.set_focus_down()
-        self.gui.print_screen()
-
-    def retry(self):
+    def retry_line(self, game, gamegui, lineid, active_line):
         """Regenerate chosen line"""
         self.gui.send_message("Retry selected text")
-        self.game.retry_active_line()
-        self.gui.print_screen("New text generated")
+        # TODO: handle the given line too, but goes to last line anyway
+        game.retry_active_line(lineid)
+        return "New text generated, if it was the last..."
 
-    def edit_active_line(self):
+    def edit_active_line(self, game, gamegui, lineid, oldline):
         """Edit chosen line/response"""
-        _, oldline = self.game.get_active_line()
         newline = self.gui.start_input_edit_text(oldline)
-        # TODO: what to do if it gets blank? Just save it?
-        self.game.change_active_line(newline)
-        self.gui.print_screen("Last line updated")
+        game.change_line(lineid, newline)
+        return "Last line updated"
 
-    def add_line(self):
+    def delete_active_line(self, game, gamegui, lineid, oldline):
+        """Delete chosen line/response"""
+        game.delete_line(lineid)
+        gamegui.shift_focus_up()
+        return "Line deleted"
+
+    def add_line(self, game, gamegui, lineid, oldline):
         """Write a new line/response"""
         newline = self.gui.start_input_line()
         if newline:
-            self.game.add_lines(newline)
-        self.gui.print_screen()
+            game.add_lines(newline)
+            gamegui.set_focus(-1)
+        return "New line added"
 
-    def delete_active_line(self):
-        """Delete chosen line/response"""
-        self.game.delete_active_line()
-        self.gui.print_screen("Line deleted")
-
-    def edit_title(self):
-        new_title = self.gui.start_input_edit_text(self.game.title)
+    def edit_title(self, game, gamegui, lineid, oldline):
+        new_title = self.gui.start_input_edit_text(game.title)
         if new_title:
-            self.game.set_title(new_title)
-            self.gui.print_screen("Title updated")
+            game.set_title(new_title)
+            return "Title updated"
         else:
-            self.gui.print_screen("Title not updated")
+            return "Title unchanged"
 
-    def edit_instructions(self):
+    def edit_instructions(self, game, gamegui, lineid, oldline):
         new_instructions = self.gui.start_input_edit_text(
-            self.game.instructions)
+            game.instructions)
 
         if not remove_comments(new_instructions.strip()).strip():
             new_instructions = default_instructions
 
-        self.game.set_instructions(new_instructions)
-        self.gui.print_screen("Instructions updated")
+        game.set_instructions(new_instructions)
+        return "Instructions updated"
 
-    def edit_story_details(self):
-        new_details = self.gui.start_input_edit_text(self.game.details)
+    def edit_story_details(self, game, gamegui, lineid, oldline):
+        new_details = self.gui.start_input_edit_text(game.details)
 
         if not remove_comments(new_details.strip()).strip():
             new_details = default_details
 
-        self.game.set_details(new_details)
-        self.gui.print_screen("Story summary updated")
-
-    def quit_game(self):
-        self.gui.send_message("Quit this game")
-        self.game.save()
-
-    def quit(self):
-        print("Quitter...")
+        game.set_details(new_details)
+        return "Story summary updated"
 
     def get_nlp_handler(self):
         if not hasattr(self, "nlp"):
@@ -264,7 +243,6 @@ class Game(object):
     def __init__(self, db, nlp, gameid=None):
         self.db = db
         self.nlp = nlp
-        self.focus = -1
 
         if gameid:
             self.gameid = gameid
@@ -308,15 +286,10 @@ class Game(object):
         self.title = self.cleanup_text(new_title).strip()
         self.save()
 
-    def get_active_line(self):
-        return (self.focus, self.lines[self.focus])
-
     def add_lines(self, text):
         """Add text to continue the story."""
         text = self.cleanup_text(text)
         self.lines.append(text)
-        # Set focus to the new line. Not sure if that is intuitive?
-        self.focus = len(self.lines) - 1
         self.save()
 
     def _generate_prompt(self, text=None):
@@ -359,58 +332,23 @@ class Game(object):
 
     def delete_line(self, lineid):
         del self.lines[lineid]
-        self.set_focus_up()
         self.save()
 
-    def delete_active_line(self):
-        return self.delete_line(self.focus)
-
-    def retry_active_line(self):
-        if self.focus is None or self.focus == len(self.lines) - 1:
+    def retry_active_line(self, lineid):
+        if lineid is None or lineid == len(self.lines) - 1:
             # Only support retrying last line for now. Haven't implemented
             # changing inside of the chain yet.
-            self.delete_active_line()
+            lineid = len(self.lines) - 1
+            self.delete_line(lineid)
             return self.generate_next_lines()
         else:
             print("Can't retry inside, per now")
             logger.warning("Can't retry inside chain, per now")
-
         self.save()
 
-    def change_active_line(self, new_text):
-        self.lines[self.focus] = new_text
-
-    def set_focus_up(self):
-        """Move focus up one line.
-
-        "Up" is here upwards in the list, that is counting down to 0. 0 is at
-        the top.
-
-        """
-        if self.focus == -1:
-            # move up to next last
-            self.focus = len(self.lines) - 2
-        elif self.focus == 0:
-            # you are already at the top
-            return
-        else:
-            self.focus -= 1
-
-        # in case of bugs
-        if self.focus < -2:
-            self.focus = 0
-
-    def set_focus_down(self):
-        """Move focus up one line"""
-        if self.focus == -1:
-            # keep at bottom
-            self.focus = len(self.lines) - 1
-        else:
-            self.focus += 1
-
-        # If trying to pass the last line
-        if self.focus > len(self.lines) - 1:
-            self.focus = len(self.lines) - 1
+    def change_line(self, lineid, new_text):
+        self.lines[lineid] = new_text
+        self.save()
 
 
 def load_config(config_file, args):

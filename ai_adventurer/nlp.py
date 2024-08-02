@@ -115,7 +115,6 @@ class HuggingfaceNLPThread(NLPThread):
 
         if isinstance(text, (list, tuple)):
             text = "\n".join(text)
-
         output = self._generate(text)
         return output
 
