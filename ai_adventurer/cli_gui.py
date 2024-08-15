@@ -152,14 +152,15 @@ class Window(object):
         else:
             title = self.game_title
         print(self.term.home + self.term.on_black + self.term.clear, end="")
-        print(self.term.center(self.term.green_bold(title)))
-        print(self.term.darkgrey("\u2500" * self.term.width))
+        print(self.term.black_on_darkorange_bold(
+              self.term.center(self.term.black_on_darkorange_bold(title))))
 
-    def _print_footer_menu(self, message=None):
-        # TODO: handle smaller terminal windows
-        print(self.term.move_xy(0, self.term.height - 3), end="")
-        print(self.term.darkgrey("\u2500" * self.term.width))
-        print(message or "")
+    def _get_footer_content(self, message=None):
+        ret = []
+        ret.append(self.term.move_xy(0, self.term.height - 2))
+        ret.append(self.term.black_on_darkorange)
+        ret.append(self.term.ljust(message or ""))
+        ret.append("\n")
 
         choices = self.choices.copy()
         choices.update(self.internal_choices)
@@ -169,12 +170,19 @@ class Window(object):
             if key == "KEY_ENTER":
                 key = "Enter"
             submenu.append(
-                self.term.gray("[")
-                + self.term.bold(key)
-                + self.term.gray("]")
-                + data[0]
+                self.term.darkgray_on_darkorange("[")
+                + self.term.black_on_darkorange_bold(key)
+                + self.term.darkgray_on_darkorange("]")
+                + self.term.black_on_darkorange(data[0])
             )
-        print(" ".join(submenu), end="")
+        ret.append(self.term.black_on_darkorange(self.term.ljust(
+            self.term.black_on_darkorange(" ").join(submenu),
+            width=self.term.width)))
+        retout = "".join(ret)
+        return retout
+
+    def _print_footer_menu(self, message=None):
+        print(self._get_footer_content(message=message), end="")
 
 
 class MenuWindow(Window):
@@ -335,7 +343,7 @@ class GameWindow(EditorWindow):
     def _print_gamedata(self):
         """Fill the main content area with the last lines"""
         y_min = 1
-        y_max = self.term.height - 4
+        y_max = self.term.height - 3
         y_pos = y_max
 
         focus = self.focus
