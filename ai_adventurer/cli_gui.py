@@ -246,8 +246,20 @@ class EditorWindow(Window):
             elif key == "j":
                 self.shift_focus_down()
                 continue
+            elif key.name == "KEY_PGDOWN":
+                self.shift_focus_down(10)
+                continue
             elif key == "k":
                 self.shift_focus_up()
+                continue
+            elif key.name == "KEY_PGUP":
+                self.shift_focus_up(10)
+                continue
+            elif key.name == "KEY_HOME":
+                self.set_focus(0)
+                continue
+            elif key.name == "KEY_END":
+                self.set_focus(-1)
                 continue
             elif key in self.choices:
                 return (
@@ -271,16 +283,16 @@ class EditorWindow(Window):
     def _get_element(self, elementid):
         return self.data[elementid]
 
-    def shift_focus_down(self):
+    def shift_focus_down(self, jumps=1):
         # The list starts at 0 at the top, so we increase
-        self.focus += 1
+        self.focus += jumps
         # Don't pass the last line
         if self.focus > len(self._get_elements()) - 1:
             self.focus = len(self._get_elements()) - 1
 
-    def shift_focus_up(self):
+    def shift_focus_up(self, jumps=1):
         # The list starts at 0 at the top, so we decrease
-        self.focus -= 1
+        self.focus -= jumps
         if self.focus < 0:
             self.focus = 0
 
