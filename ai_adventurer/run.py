@@ -68,11 +68,9 @@ def cleanup_text(text):
         return [cleanup_text(t) for t in text]
     # Replace multiple newlines with at most two (keeping paragraphs)
     text = re.sub(r"\n{3,}", "\n\n", text)
-    # Remove single newlines (still keeping paragraphs)
-    text = re.sub(r"\n{1}", " ", text)
     # Replace multiple spaces with a single space
     text = re.sub(r"[ \t\r\f\v]+", " ", text)
-    return text
+    return text.strip()
 
 
 class GameController(object):
@@ -153,14 +151,21 @@ class GameController(object):
         self.config.write(open(default_configfile, "w"))
         self.secrets.write(open(default_secretsfile, "w"))
 
-    def start_new_game(self, _):
+    def start_new_game(self, _=None):
         self.game = Game(db=self.db, nlp=self.nlp)
-        # TODO: change to ask for a concept instead, and let the AI give title
-        # and intro out of that
-        title = self.gui.start_input_line("An initial title for the story? ")
-        self.game.set_title(title)
         self.game.set_instructions(default_instructions)
-        self.game.set_details(default_details)
+
+        concept = cleanup_text(
+            self.gui.start_input_line("A concept for the story (leave blank "
+                                      + "for random)? "))
+        if not concept:
+            concept = self.nlp.prompt("Give me a random concept of an exiting "
+                                      + "fantasy story.")
+        self.game.set_details(concept)
+        title = cleanup_text(self.nlp.prompt(
+            "Give me only one title for a story with the given concept, "
+            + "without any other feedback: " + concept))
+        self.game.set_title(title)
         self.game.add_lines(self.game.get_introduction())
         gamegui = cli_gui.GameWindow(gui=self.gui, choices=self.game_actions,
                                      game=self.game)
