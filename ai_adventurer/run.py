@@ -62,6 +62,19 @@ def remove_comments(text):
     return "\n".join(ret)
 
 
+def cleanup_text(text):
+    """Remove some unnecessary whitespace"""
+    if isinstance(text, (list, tuple)):
+        return [cleanup_text(t) for t in text]
+    # Replace multiple newlines with at most two (keeping paragraphs)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    # Remove single newlines (still keeping paragraphs)
+    text = re.sub(r"\n{1}", " ", text)
+    # Replace multiple spaces with a single space
+    text = re.sub(r"[ \t\r\f\v]+", " ", text)
+    return text
+
+
 class GameController(object):
     """The controller of the game"""
 
@@ -70,6 +83,7 @@ class GameController(object):
         self.secrets = secrets
         self.gui = cli_gui.GUI()
         self.db = db.Database()
+        self.nlp = self.get_nlp_handler()
 
         self.game_actions = {
             "r": ("Retry", self.retry_line),
@@ -125,7 +139,7 @@ class GameController(object):
                 message = choice[1](game)
 
     def load_game(self, selected):
-        self.game = Game(db=self.db, nlp=self.get_nlp_handler(),
+        self.game = Game(db=self.db, nlp=self.nlp,
                          gameid=selected[0])
         gamegui = cli_gui.GameWindow(gui=self.gui, choices=self.game_actions,
                                      game=self.game)
@@ -140,7 +154,7 @@ class GameController(object):
         self.secrets.write(open(default_secretsfile, "w"))
 
     def start_new_game(self, _):
-        self.game = Game(db=self.db, nlp=self.get_nlp_handler())
+        self.game = Game(db=self.db, nlp=self.nlp)
         # TODO: change to ask for a concept instead, and let the AI give title
         # and intro out of that
         title = self.gui.start_input_line("An initial title for the story? ")
@@ -180,6 +194,7 @@ class GameController(object):
     def edit_active_line(self, game, gamegui, lineid, oldline):
         """Edit chosen line/response"""
         newline = self.gui.start_input_edit_text(oldline)
+        newline = cleanup_text(newline)
         game.change_line(lineid, newline)
         return "Last line updated"
 
@@ -261,34 +276,23 @@ class Game(object):
     def save(self):
         self.db.save_game(self)
 
-    @classmethod
-    def cleanup_text(cls, text):
-        """Remove some unnecessary whitespace"""
-        if isinstance(text, (list, tuple)):
-            return [cls.cleanup_text(t) for t in text]
-        # Replace multiple newlines with at most two (keeping paragraphs)
-        text = re.sub(r"\n{3,}", "\n\n", text)
-        # Replace multiple spaces with a single space
-        text = re.sub(r"[ \t\r\f\v]+", " ", text)
-        return text
-
     def set_instructions(self, text):
         """Set the instructions for the NLP generations."""
-        self.instructions = self.cleanup_text(text)
+        self.instructions = cleanup_text(text)
         self.save()
 
     def set_details(self, text):
         """Set story details and other important information"""
-        self.details = self.cleanup_text(text)
+        self.details = cleanup_text(text)
         self.save()
 
     def set_title(self, new_title):
-        self.title = self.cleanup_text(new_title).strip()
+        self.title = cleanup_text(new_title).strip()
         self.save()
 
     def add_lines(self, text):
         """Add text to continue the story."""
-        text = self.cleanup_text(text)
+        text = cleanup_text(text)
         self.lines.append(text)
         self.save()
 
@@ -307,10 +311,10 @@ class Game(object):
         if text:
             prompt.append(text)
 
-        prompt = self.cleanup_text(prompt)
+        prompt = cleanup_text(prompt)
 
         # TODO: check if all APIs support lists of just text
-        return self.cleanup_text(self.nlp.prompt(prompt))
+        return cleanup_text(self.nlp.prompt(prompt))
 
     def get_introduction(self):
         """Make the AI come up with the initial start of the story."""
@@ -322,7 +326,7 @@ class Game(object):
             prompt.append(details)
 
         prompt.append("\n---\nGive me three sentences that starts this story.")
-        return self.cleanup_text(self.nlp.prompt(prompt))
+        return cleanup_text(self.nlp.prompt(prompt))
 
     def generate_next_lines(self, instructions=None):
         more = self._generate_prompt(instructions)
