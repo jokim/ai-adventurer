@@ -378,12 +378,11 @@ class GameWindow(EditorWindow):
             for row in reversed(rows):
                 if line_nr == focus:
                     print(self.term.standout, end="")
-                print("%3d   " % line_nr, end="")
                 print(row, end="")
                 print(self.term.normal, end="")
 
                 y_pos -= 1
-                if y_pos <= y_min:
+                if y_pos < y_min:
                     return
                 print(self.term.move_xy(0, y_pos), end="")
 
