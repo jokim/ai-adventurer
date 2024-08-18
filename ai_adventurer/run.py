@@ -254,7 +254,8 @@ class GameController(object):
                 raise Exception("Missing param for NLP model, after : in conf")
             logger.debug(f"Loading NLP {model!r} with param {extra!r}")
             nlp_class = nlp.get_nlp_class(model)
-            self.nlp = nlp_class(secrets=self.secrets, extra=extra)
+            self.nlp = nlp_class(secrets=self.secrets, extra=extra,
+                                 modelname=model)
         return self.nlp
 
 
@@ -385,6 +386,7 @@ def load_secrets(config_file):
         "DEFAULT": {
             "openai-key": "CHANGEME",
             "gemini-key": "CHANGEME",
+            "mistral-key": "CHANGEME",
         },
     }
     config = configparser.ConfigParser()

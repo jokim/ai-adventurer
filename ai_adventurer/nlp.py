@@ -6,8 +6,6 @@
 import logging
 import time
 
-from openai import OpenAI
-
 import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 
@@ -22,8 +20,9 @@ class NLPThread(object):
 
     """
 
-    def __init__(self, secrets=None, extra=None):
+    def __init__(self, secrets=None, extra=None, modelname=None):
         self.secrets = secrets
+        self.modelname = modelname
 
     def prompt(self, text=None):
         """Subclass for the specifig NLP generation.
@@ -139,7 +138,11 @@ class OpenAINLPThread(NLPThread):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        from openai import OpenAI
         self.client = OpenAI(api_key=self.secrets["DEFAULT"]["openai-key"])
+        if not self.modelname:
+            self.modelname = self.openai_model
+        logger.debug(f"Model: {self.modelname}")
 
     def prompt(self, text):
         # Reformat the prompt to follow OpenAIs specs:
@@ -148,7 +151,7 @@ class OpenAINLPThread(NLPThread):
             new_text.append({"role": "user", "content": t})
 
         answer = self.client.chat.completions.create(
-            model=self.openai_model,
+            model=self.modelname,
             messages=new_text,
             stream=False,
         )
@@ -175,17 +178,56 @@ class GeminiNLPThread(NLPThread):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         genai.configure(api_key=self.secrets["DEFAULT"]["gemini-key"])
+        if not self.modelname:
+            self.modelname = self.google_model
+
         self.client = genai.GenerativeModel(
-            self.google_model, safety_settings=self.safety_settings
+            self.modelname, safety_settings=self.safety_settings
         )
+        logger.debug(f"Model: {self.modelname}")
 
     def prompt(self, text):
         logger.debug("Generating with prompt: '%s'", text)
-        answer = self.client.generate_content(
+        response = self.client.generate_content(
             contents=text,
         )
-        logger.debug("Response from Gemini: '%s'", answer.text)
-        return answer.text
+        try:
+            answer = response.text
+            logger.debug("Response from Gemini: '%s'", answer)
+        except ValueError:
+            logger.debug(response.prompt_feedback)
+            logger.debug("Blocked by Gemini: '%r'", response)
+            answer = str(response.prompt_feedback)
+            logger.debug("Returning: '%r'", answer)
+
+        return answer
+
+
+class MistralNLP(NLPThread):
+
+    mistral_model = "open-mistral-nemo"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from mistralai import Mistral
+        self.client = Mistral(api_key=self.secrets["DEFAULT"]["mistral-key"])
+        if not self.modelname:
+            self.modelname = self.mistral_model
+
+    def prompt(self, text):
+        # Reformat the prompt to follow OpenAIs specs:
+        new_text = []
+        for t in text:
+            new_text.append({"role": "user", "content": t})
+
+        logger.debug(f"model {self.modelname}")
+
+        answer = self.client.chat.complete(
+            model=self.modelname,
+            messages=new_text,
+            stream=False,
+        )
+        return answer.choices[0].message.content
 
 
 models = {
@@ -194,6 +236,8 @@ models = {
     "gemini-1.0-pro": GeminiNLPThread,
     "gpt-4o-mini": OpenAINLPThread,
     "gpt-4o": OpenAINLPThread,
+    "open-mistral-nemo": MistralNLP,
+    "mistral-large-latest": MistralNLP,
     "mock": MockNLPThread,
     # TODO: would probably also need a file name
     "local": LocalNLPThread,
