@@ -33,7 +33,7 @@ class NLPThread(object):
 
         Adds the previous dialog to the prompt, for giving context.
         """
-        pass
+        logger.debug("Prompt given: %s", text)
 
 
 class MockNLPThread(NLPThread):
@@ -50,6 +50,7 @@ class MockNLPThread(NLPThread):
         super().__init__(*args, **kwargs)
 
     def prompt(self, text=None):
+        super().prompt(text)
         import random
 
         response = random.choice(self.replies)
@@ -155,6 +156,7 @@ class OpenAINLPThread(NLPThread):
         logger.debug(f"Model: {self.modelname}")
 
     def prompt(self, text):
+        super().prompt(text)
         # Reformat the prompt to follow OpenAIs specs:
         new_text = []
         for t in text:
@@ -203,7 +205,7 @@ class GeminiNLPThread(NLPThread):
         logger.debug(f"Model: {self.modelname}")
 
     def prompt(self, text):
-        logger.debug("Generating with prompt: '%s'", text)
+        super().prompt(text)
         response = self.client.generate_content(
             contents=text,
         )
@@ -237,7 +239,8 @@ class MistralNLP(NLPThread):
             self.modelname = self.mistral_model
 
     def prompt(self, text):
-        import mistralai
+        super().prompt(text)
+
         # Reformat the prompt to follow OpenAIs specs:
         new_text = []
         for t in text:
@@ -245,6 +248,7 @@ class MistralNLP(NLPThread):
 
         logger.debug(f"model {self.modelname}")
 
+        import mistralai
         try:
             answer = self.client.chat.complete(
                 model=self.modelname,
