@@ -1,19 +1,16 @@
 #!/usr/bin/env python
 
 import argparse
-import configparser
 import logging
 import re
 
 import cli_gui
-import nlp
+import config
 import db
+import nlp
 
 
 logger = logging.getLogger(__name__)
-
-default_configfile = "config.ini"
-default_secretsfile = "secrets.ini"
 
 
 default_instructions = """
@@ -148,8 +145,8 @@ class GameController(object):
         return "Game deleted"
 
     def edit_config(self):
-        self.config.write(open(default_configfile, "w"))
-        self.secrets.write(open(default_secretsfile, "w"))
+        config.save_config(self.config)
+        config.save_secrets(self.secrets)
 
     def start_new_game(self, _=None):
         self.game = Game(db=self.db, nlp=self.nlp)
@@ -361,42 +358,6 @@ class Game(object):
         self.save()
 
 
-def load_config(config_file, args):
-    """Using a simple INI file by now"""
-    default_settings = {
-        "DEFAULT": {
-            # See ai_adventurer/nlp.py for available models
-            "nlp_model": "gemini-1.5-flash",
-        },
-    }
-    config = configparser.ConfigParser()
-    config.read_dict(default_settings)
-    config.read(config_file)
-
-    # Override with command-line arguments
-    if args.nlp_model:
-        config["DEFAULT"]["nlp_model"] = args.nlp_model
-
-    return config
-
-
-def load_secrets(config_file):
-    """I like to have the secrets separated from the rest of the config."""
-    default_settings = {
-        "DEFAULT": {
-            "openai-key": "CHANGEME",
-            "gemini-key": "CHANGEME",
-            "mistral-key": "CHANGEME",
-        },
-    }
-    config = configparser.ConfigParser()
-    config.read_dict(default_settings)
-    config.read(config_file)
-
-    # Not passing any variables as script arguments, since these are secrets.
-    return config
-
-
 def main():
     parser = argparse.ArgumentParser(
         description="Run the AI adventurer game in the terminal"
@@ -411,14 +372,14 @@ def main():
         "--config-file",
         type=str,
         metavar="FILENAME",
-        default=default_configfile,
+        default=config.default_configfile,
         help="Where the config is located. Default: %(default)s",
     )
     parser.add_argument(
         "--secrets-file",
         type=str,
         metavar="FILENAME",
-        default=default_secretsfile,
+        default=config.default_secretsfile,
         help="Where the secrets are located. Default: %(default)s",
     )
     parser.add_argument(
@@ -449,11 +410,11 @@ def main():
             print(m)
         return
 
-    config = load_config(args.config_file, args)
-    secrets = load_secrets(args.secrets_file)
+    configuration = config.load_config(args.config_file, args)
+    secrets = config.load_secrets(args.secrets_file)
 
     logger.debug("Starting game")
-    game = GameController(config, secrets)
+    game = GameController(configuration, secrets)
     game.run()
     logger.debug("Stopping game")
 
