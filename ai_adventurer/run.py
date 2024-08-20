@@ -70,6 +70,15 @@ def cleanup_text(text):
     return text.strip()
 
 
+def clean_text_for_saving(text):
+    text = cleanup_text(text)
+    # Remove whitespace before comments
+    ret = []
+    for line in text.splitlines():
+        ret.append(line.lstrip())
+    return "\n".join(ret)
+
+
 class GameController(object):
     """The controller of the game"""
 
@@ -149,7 +158,7 @@ class GameController(object):
 
     def start_new_game(self, _=None):
         self.game = Game(db=self.db, nlp=self.nlp)
-        self.game.set_instructions(default_instructions)
+        self.game.set_instructions(clean_text_for_saving(default_instructions))
 
         concept = cleanup_text(
             self.gui.start_input_line("A concept for the story (leave blank "
@@ -159,7 +168,7 @@ class GameController(object):
                                       + "fantasy story.")
         self.game.set_details(concept)
         title = cleanup_text(self.nlp.prompt(
-            "Give me only one title, at max 40 characters, for a story with "
+            "Give me only one title, max 40 characters, for a story with "
             + "the given concept, without any other feedback: " + concept))
         self.game.set_title(title)
         self.game.add_lines(self.game.get_introduction())
@@ -226,7 +235,7 @@ class GameController(object):
             game.instructions)
 
         if not remove_comments(new_instructions.strip()).strip():
-            new_instructions = default_instructions
+            new_instructions = clean_text_for_saving(default_instructions)
 
         game.set_instructions(new_instructions)
         return "Instructions updated"
@@ -235,7 +244,7 @@ class GameController(object):
         new_details = self.gui.start_input_edit_text(game.details)
 
         if not remove_comments(new_details.strip()).strip():
-            new_details = default_details
+            new_details = clean_text_for_saving(default_details)
 
         game.set_details(new_details)
         return "Story summary updated"
