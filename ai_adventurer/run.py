@@ -79,7 +79,6 @@ class GameController(object):
         self.gui = cli_gui.GUI()
         self.db = db.Database()
         self.nlp = self.get_nlp_handler()
-
         self.game_actions = {
             "r": ("Retry", self.retry_line),
             "e": ("Edit", self.edit_active_line),
@@ -160,8 +159,8 @@ class GameController(object):
                                       + "fantasy story.")
         self.game.set_details(concept)
         title = cleanup_text(self.nlp.prompt(
-            "Give me only one title for a story with the given concept, "
-            + "without any other feedback: " + concept))
+            "Give me only one title, at max 40 characters, for a story with "
+            + "the given concept, without any other feedback: " + concept))
         self.game.set_title(title)
         self.game.add_lines(self.game.get_introduction())
         gamegui = cli_gui.GameWindow(gui=self.gui, choices=self.game_actions,
@@ -251,8 +250,20 @@ class GameController(object):
                 raise Exception("Missing param for NLP model, after : in conf")
             logger.debug(f"Loading NLP {model!r} with param {extra!r}")
             nlp_class = nlp.get_nlp_class(model)
-            self.nlp = nlp_class(secrets=self.secrets, extra=extra,
-                                 modelname=model)
+            try:
+                self.nlp = nlp_class(secrets=self.secrets, extra=extra,
+                                     modelname=model)
+            except nlp.NotAuthenticatedError as e:
+                # Ask for API and retry
+                print(e)
+                apikey = input("Input API key: ")
+                keyname = nlp.model2apikey[nlp_class]
+                self.secrets['DEFAULT'][keyname] = apikey
+                answer = input("Want to save this to secrets.ini? (y/N) ")
+                if answer == 'y':
+                    config.save_secrets(self.secrets)
+                self.nlp = nlp_class(secrets=self.secrets, extra=extra,
+                                     modelname=model)
         return self.nlp
 
 

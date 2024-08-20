@@ -13,6 +13,10 @@ from google.generativeai.types import HarmCategory, HarmBlockThreshold
 logger = logging.getLogger(__name__)
 
 
+class NotAuthenticatedError(Exception):
+    pass
+
+
 class NLPThread(object):
     """The general NLP functionality.
 
@@ -138,8 +142,14 @@ class OpenAINLPThread(NLPThread):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        api_key = self.secrets["DEFAULT"]["openai-key"]
+        if api_key == "CHANGEME":
+            raise NotAuthenticatedError(
+                "Invalid API key - see " +
+                "https://platform.openai.com/api-keys")
+
         from openai import OpenAI
-        self.client = OpenAI(api_key=self.secrets["DEFAULT"]["openai-key"])
+        self.client = OpenAI(api_key=api_key)
         if not self.modelname:
             self.modelname = self.openai_model
         logger.debug(f"Model: {self.modelname}")
@@ -177,7 +187,13 @@ class GeminiNLPThread(NLPThread):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        genai.configure(api_key=self.secrets["DEFAULT"]["gemini-key"])
+        api_key = self.secrets["DEFAULT"]["gemini-key"]
+        if api_key == "CHANGEME":
+            raise NotAuthenticatedError(
+                "Invalid API key - see " +
+                "https://aistudio.google.com/app/apikey")
+
+        genai.configure(api_key=api_key)
         if not self.modelname:
             self.modelname = self.google_model
 
@@ -209,12 +225,19 @@ class MistralNLP(NLPThread):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        api_key = self.secrets["DEFAULT"]["mistral-key"]
+        if api_key == "CHANGEME":
+            raise NotAuthenticatedError(
+                "Invalid API key - see " +
+                "https://console.mistral.ai/api-keys/")
+
         from mistralai import Mistral
-        self.client = Mistral(api_key=self.secrets["DEFAULT"]["mistral-key"])
+        self.client = Mistral(api_key=api_key)
         if not self.modelname:
             self.modelname = self.mistral_model
 
     def prompt(self, text):
+        import mistralai
         # Reformat the prompt to follow OpenAIs specs:
         new_text = []
         for t in text:
@@ -222,11 +245,17 @@ class MistralNLP(NLPThread):
 
         logger.debug(f"model {self.modelname}")
 
-        answer = self.client.chat.complete(
-            model=self.modelname,
-            messages=new_text,
-            stream=False,
-        )
+        try:
+            answer = self.client.chat.complete(
+                model=self.modelname,
+                messages=new_text,
+                stream=False,
+            )
+        except mistralai.models.sdkerror.SDKError as e:
+            if e.status_code == 401:
+                raise NotAuthenticatedError(e)
+            logger.critical(e, exc_info=True)
+            raise e
         return answer.choices[0].message.content
 
 
@@ -242,6 +271,12 @@ models = {
     # TODO: would probably also need a file name
     "local": LocalNLPThread,
     "huggingface": HuggingfaceNLPThread,
+}
+
+model2apikey = {
+    GeminiNLPThread: 'gemini-key',
+    OpenAINLPThread: 'openai-key',
+    MistralNLP: 'mistral-key',
 }
 
 
