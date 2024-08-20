@@ -96,7 +96,7 @@ class GUI(object):
 
     def print_menu(self, choices, title=None, status=None):
         """Print a menu with the given choices."""
-        self.print_header(title=title)
+        self._print_header(title=title)
 
         for key, options in choices.items():
             if key == "KEY_ENTER":
@@ -153,7 +153,8 @@ class Window(object):
             title = self.game_title
         print(self.term.home + self.term.on_black + self.term.clear, end="")
         print(self.term.black_on_darkorange_bold(
-              self.term.center(self.term.black_on_darkorange_bold(title))))
+              self.term.ljust(self.term.black_on_darkorange_bold(title))))
+        # TODO: cut the title at length of line
 
     def _get_footer_content(self, message=None):
         ret = []
@@ -341,7 +342,7 @@ class GameWindow(EditorWindow):
 
     def _print_screen(self, message=""):
         """Print the game screen, with all details."""
-        self._print_header()
+        self._print_header(title=self.data.title)
         self._print_gamedata()
         self._print_footer_menu(message=message)
         return
