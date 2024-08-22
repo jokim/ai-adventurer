@@ -224,7 +224,7 @@ class MenuWindow(Window):
             print()
             print(message)
             y_pos += 2
-        while y_pos < y_max:
+        while y_pos <= y_max:
             print(self.term.ljust(" ", width=self.term.width))
             y_pos += 1
 
@@ -344,14 +344,23 @@ class TableEditWindow(EditorWindow):
 
     def _print_screen(self, message=None):
         self._print_header()
-        # TODO: change to move up and down according in respect of self.focus
+
+        y_pos = 1
+        y_max = self.term.height - 3
+
         for i, line in enumerate(self.data):
             if i == self.focus:
                 print(self.term.standout, end="")
+            txt = ""
             for i, element in enumerate(line):
                 formatter = self.format[i]
-                print(formatter % (element,), end="")
-            print(self.term.normal)
+                txt += formatter % (element,)
+            print(self.term.ljust(txt, width=self.term.width)
+                  + self.term.normal)
+            y_pos += 1
+        while y_pos <= y_max:
+            print(self.term.ljust(" ", width=self.term.width))
+            y_pos += 1
         self._print_footer_menu(message=message)
 
 
