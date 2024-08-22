@@ -223,6 +223,10 @@ class GeminiNLPThread(NLPThread):
 
 class MistralNLP(NLPThread):
 
+    max_tokens = 200  # about 40-100 words?
+
+    timeout_ms = 4000
+
     mistral_model = "open-mistral-nemo"
 
     def __init__(self, *args, **kwargs):
@@ -253,6 +257,8 @@ class MistralNLP(NLPThread):
             answer = self.client.chat.complete(
                 model=self.modelname,
                 messages=new_text,
+                max_tokens=self.max_tokens,
+                timeout_ms=self.timeout_ms,
                 stream=False,
             )
         except mistralai.models.sdkerror.SDKError as e:
