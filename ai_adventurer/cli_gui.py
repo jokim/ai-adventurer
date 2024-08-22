@@ -282,6 +282,8 @@ class EditorWindow(Window):
         return self.data
 
     def _get_element(self, elementid):
+        if not self.data:
+            return None
         return self.data[elementid]
 
     def shift_focus_down(self, jumps=1):
@@ -337,6 +339,8 @@ class TableEditWindow(EditorWindow):
 
 class GameWindow(EditorWindow):
 
+    text_width = 120
+
     def __init__(self, gui, choices, game):
         super().__init__(gui=gui, choices=choices, data=game)
 
@@ -351,6 +355,8 @@ class GameWindow(EditorWindow):
         return self.data.lines
 
     def _get_element(self, elementid):
+        if not self.data.lines:
+            return None
         return self.data.lines[elementid]
 
     def _print_gamedata(self):
@@ -382,25 +388,27 @@ class GameWindow(EditorWindow):
         if len(lines) == 0:
             print(self.term.ljust(self.term.gray("No content yet..."),
                                   width=self.term.width))
-            return
-        while line_nr >= 0:
-            line = lines[line_nr]
-            rows = self.term.wrap(line, width=min(self.term.width - 10, 120))
-            # Make sure blank rows are included
-            if not rows:
-                rows.append("")
-            for row in reversed(rows):
-                if line_nr == focus:
-                    print(self.term.standout, end="")
-                print(self.term.ljust(row, width=self.term.width), end="")
-                print(self.term.normal, end="")
+            y_pos -= 1
+        else:
+            while line_nr >= 0:
+                line = lines[line_nr]
+                rows = self.term.wrap(line, width=min(self.term.width - 10,
+                                                      self.text_width))
+                # Make sure blank rows are included
+                if not rows:
+                    rows.append("")
+                for row in reversed(rows):
+                    if line_nr == focus:
+                        print(self.term.standout, end="")
+                    print(self.term.ljust(row, width=self.term.width), end="")
+                    print(self.term.normal, end="")
 
-                y_pos -= 1
-                if y_pos < y_min:
-                    return
-                print(self.term.move_xy(0, y_pos), end="")
+                    y_pos -= 1
+                    if y_pos < y_min:
+                        return
+                    print(self.term.move_xy(0, y_pos), end="")
 
-            line_nr -= 1
+                line_nr -= 1
         while y_pos >= y_min:
             print(self.term.move_xy(0, y_pos)
                   + self.term.ljust(" ", width=self.term.width),
