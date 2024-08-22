@@ -208,19 +208,25 @@ class MenuWindow(Window):
         """Print a menu with the given choices."""
         self._print_header()
 
-        for key, options in self.choices.items():
+        choices = self.choices.copy()
+        choices.update(self.internal_choices)
+
+        y_pos = 1
+        y_max = self.term.height - 3
+
+        for key, options in choices.items():
             if key == "KEY_ENTER":
                 key = "Enter"
-            print(self.term.bold(str(key)) + " - " + options[0])
-        for key, options in self.internal_choices.items():
-            if key == "KEY_ENTER":
-                key = "Enter"
-            print(self.term.bold(str(key)) + " - " + options[0])
-        print()
+            print(self.term.ljust(self.term.bold(str(key)) + " - " +
+                                  options[0], width=self.term.width))
+            y_pos += 1
         if message:
             print()
             print(message)
-        # TODO: Any footer to print?
+            y_pos += 2
+        while y_pos < y_max:
+            print(self.term.ljust(" ", width=self.term.width))
+            y_pos += 1
 
 
 class EditorWindow(Window):
