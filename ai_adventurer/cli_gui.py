@@ -247,11 +247,23 @@ class EditorWindow(Window):
             elif key == "j":
                 self.shift_focus_down()
                 continue
+            elif key.name == "KEY_RIGHT":
+                self.shift_focus_down(10)
+                continue
+            elif key.name == "KEY_DOWN":
+                self.shift_focus_down()
+                continue
             elif key.name == "KEY_PGDOWN":
                 self.shift_focus_down(10)
                 continue
             elif key == "k":
                 self.shift_focus_up()
+                continue
+            elif key.name == "KEY_UP":
+                self.shift_focus_up()
+                continue
+            elif key.name == "KEY_LEFT":
+                self.shift_focus_up(10)
                 continue
             elif key.name == "KEY_PGUP":
                 self.shift_focus_up(10)
