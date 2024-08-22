@@ -380,7 +380,8 @@ class GameWindow(EditorWindow):
             line_nr = focus + 1
 
         if len(lines) == 0:
-            print(self.term.gray("No content yet..."))
+            print(self.term.ljust(self.term.gray("No content yet..."),
+                                  width=self.term.width))
             return
         while line_nr >= 0:
             line = lines[line_nr]
@@ -391,7 +392,7 @@ class GameWindow(EditorWindow):
             for row in reversed(rows):
                 if line_nr == focus:
                     print(self.term.standout, end="")
-                print(row, end="")
+                print(self.term.ljust(row, width=self.term.width), end="")
                 print(self.term.normal, end="")
 
                 y_pos -= 1
@@ -400,3 +401,8 @@ class GameWindow(EditorWindow):
                 print(self.term.move_xy(0, y_pos), end="")
 
             line_nr -= 1
+        while y_pos >= y_min:
+            print(self.term.move_xy(0, y_pos)
+                  + self.term.ljust(" ", width=self.term.width),
+                  end="")
+            y_pos -= 1
