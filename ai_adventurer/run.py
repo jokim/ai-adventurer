@@ -14,12 +14,15 @@ logger = logging.getLogger(__name__)
 
 
 default_instructions = """
-    # This is the instructions that is given to the AI at each step in the
-    # story.
-    # - All lines starting with hash (#) are removed before given to the AI.
-    # - Leave the instructions blank to reset to the default instructions.
+    % This is the instructions that is given to the AI at each step in the
+    % story.
+    % - All lines starting with percent (%) are removed before given to the AI.
+    % - Leave the instructions blank to reset to the default instructions.
 
     You are an excellent story writer, writing remarkable fantasy fiction.
+
+    You must return plain text, but you could use markdown syntax for chapter
+    titles and bold text. Separate paragraphs with double line shifts.
 
     Writing Guidelines: Use first person perspective, and present tense, unless
     the story starts different. Use writing techniques to bring the world and
@@ -31,26 +34,25 @@ default_instructions = """
     summarisation. Use humor.
 
     Return one sentence, continuing the given story.
-
     """
 
 
 default_details = """
-    # Story summary and details.
-    #
-    # This is where you could put details that are important for the story. For
-    # example a summary of how the story should go, or details about certain
-    # characters.
-    #
-    # All lines starting with hash (#) are ignored.
+    % Story summary and details.
+    %
+    % This is where you could put details that are important for the story. For
+    % example a summary of how the story should go, or details about certain
+    % characters.
+    %
+    % All lines starting with hash (#) are ignored.
 
-    # The default is quite generic...
+    % The default is quite generic...
     This is a story about you, going on an adventurous journey. You will
     experience a lot of things, and will be surprised from time to time.
     """
 
 
-def remove_comments(text):
+def remove_internal_comments(text):
     ret = []
     for line in text.splitlines():
         line = line.lstrip()
@@ -162,7 +164,7 @@ class GameController(object):
 
         concept = cleanup_text(
             self.gui.start_input_line("A concept for the story (leave blank "
-                                      + "for random)? "))
+                                      + "to get a random from the AI)? "))
         if not concept:
             concept = self.nlp.prompt("Give me a random concept of an exiting "
                                       + "fantasy story.")
@@ -234,7 +236,7 @@ class GameController(object):
         new_instructions = self.gui.start_input_edit_text(
             game.instructions)
 
-        if not remove_comments(new_instructions.strip()).strip():
+        if not remove_internal_comments(new_instructions.strip()).strip():
             new_instructions = clean_text_for_saving(default_instructions)
 
         game.set_instructions(new_instructions)
@@ -243,7 +245,7 @@ class GameController(object):
     def edit_story_details(self, game, gamegui, lineid, oldline):
         new_details = self.gui.start_input_edit_text(game.details)
 
-        if not remove_comments(new_details.strip()).strip():
+        if not remove_internal_comments(new_details.strip()).strip():
             new_details = clean_text_for_saving(default_details)
 
         game.set_details(new_details)
@@ -322,8 +324,8 @@ class Game(object):
     def _generate_prompt(self, text=None):
         # TODO: Should the instruction go into the NLP object creation, since
         # the APIs have its own parameter for that? Or are there no difference?
-        prompt = [remove_comments(self.instructions)]
-        details = remove_comments(self.details)
+        prompt = [remove_internal_comments(self.instructions)]
+        details = remove_internal_comments(self.details)
         prompt.append(f"\n---\nThe title of the story: '{self.title}'")
         if details.strip():
             prompt.append("\n---\nImportant details about the story:")
@@ -341,8 +343,8 @@ class Game(object):
 
     def get_introduction(self):
         """Make the AI come up with the initial start of the story."""
-        prompt = [remove_comments(self.instructions)]
-        details = remove_comments(self.details)
+        prompt = [remove_internal_comments(self.instructions)]
+        details = remove_internal_comments(self.details)
         prompt.append(f"\n---\nThe title of the story: '{self.title}'\n")
         if details.strip():
             prompt.append("\n---\nImportant details about the story:\n")
