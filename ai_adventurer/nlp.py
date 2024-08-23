@@ -264,7 +264,7 @@ class GeminiNLPClient(OnlineNLPClient):
         client = genai.GenerativeModel(
             self.modelname,
             safety_settings=self.safety_settings,
-            system_instructions=instructions,
+            system_instruction=instructions,
         )
         response = client.generate_content(
             contents=text,
