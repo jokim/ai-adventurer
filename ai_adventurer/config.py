@@ -1,4 +1,9 @@
 #!/usr/bin/env python
+"""The configuration of the game.
+
+Only using simple INI files by now.
+
+"""
 
 import configparser
 
@@ -23,11 +28,14 @@ default_secret_settings = {
 }
 
 
-def load_config(config_file, args=None):
-    """Using a simple INI file by now"""
-
+def _get_default_config():
     config = configparser.ConfigParser()
     config.read_dict(default_config)
+    return config
+
+
+def load_config(config_file, args=None):
+    config = _get_default_config()
     config.read(config_file)
 
     # Override with command-line arguments
@@ -50,10 +58,15 @@ def save_secrets(config, filename=None):
     config.write(open(filename, 'w'))
 
 
-def load_secrets(config_file):
-    """I like to have the secrets separated from the rest of the config."""
+def _get_default_secrets():
     config = configparser.ConfigParser()
     config.read_dict(default_secret_settings)
+    return config
+
+
+def load_secrets(config_file):
+    """I like to have the secrets separated from the rest of the config."""
+    config = _get_default_secrets()
     config.read(config_file)
 
     # Not passing any variables as script arguments, since these are secrets.

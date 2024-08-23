@@ -52,17 +52,8 @@ default_details = """
     """
 
 
-def remove_internal_comments(text):
-    ret = []
-    for line in text.splitlines():
-        line = line.lstrip()
-        if not line.startswith("%"):
-            ret.append(line)
-    return "\n".join(ret)
-
-
 def cleanup_text(text):
-    """Remove some unnecessary whitespace"""
+    """Remove some unnecessary white space"""
     if isinstance(text, (list, tuple)):
         return [cleanup_text(t) for t in text]
     # Replace multiple newlines with at most two (keeping paragraphs)
@@ -74,7 +65,7 @@ def cleanup_text(text):
 
 def clean_text_for_saving(text):
     text = cleanup_text(text)
-    # Remove whitespace before comments
+    # Remove white space before comments
     ret = []
     for line in text.splitlines():
         ret.append(line.lstrip())
@@ -236,7 +227,7 @@ class GameController(object):
         new_instructions = self.gui.start_input_edit_text(
             game.instructions)
 
-        if not remove_internal_comments(new_instructions.strip()).strip():
+        if not nlp.remove_internal_comments(new_instructions.strip()).strip():
             new_instructions = clean_text_for_saving(default_instructions)
 
         game.set_instructions(new_instructions)
@@ -245,7 +236,7 @@ class GameController(object):
     def edit_story_details(self, game, gamegui, lineid, oldline):
         new_details = self.gui.start_input_edit_text(game.details)
 
-        if not remove_internal_comments(new_details.strip()).strip():
+        if not nlp.remove_internal_comments(new_details.strip()).strip():
             new_details = clean_text_for_saving(default_details)
 
         game.set_details(new_details)
@@ -324,8 +315,8 @@ class Game(object):
     def _generate_prompt(self, text=None):
         # TODO: Should the instruction go into the NLP object creation, since
         # the APIs have its own parameter for that? Or are there no difference?
-        prompt = [remove_internal_comments(self.instructions)]
-        details = remove_internal_comments(self.details)
+        prompt = [nlp.remove_internal_comments(self.instructions)]
+        details = nlp.remove_internal_comments(self.details)
         prompt.append(f"\n---\nThe title of the story: '{self.title}'")
         if details.strip():
             prompt.append("\n---\nImportant details about the story:")
@@ -343,8 +334,8 @@ class Game(object):
 
     def get_introduction(self):
         """Make the AI come up with the initial start of the story."""
-        prompt = [remove_internal_comments(self.instructions)]
-        details = remove_internal_comments(self.details)
+        prompt = [nlp.remove_internal_comments(self.instructions)]
+        details = nlp.remove_internal_comments(self.details)
         prompt.append(f"\n---\nThe title of the story: '{self.title}'\n")
         if details.strip():
             prompt.append("\n---\nImportant details about the story:\n")
