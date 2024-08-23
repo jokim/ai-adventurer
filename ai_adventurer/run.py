@@ -56,7 +56,7 @@ def remove_internal_comments(text):
     ret = []
     for line in text.splitlines():
         line = line.lstrip()
-        if not line.startswith("#"):
+        if not line.startswith("%"):
             ret.append(line)
     return "\n".join(ret)
 
