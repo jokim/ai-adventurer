@@ -14,26 +14,25 @@ logger = logging.getLogger(__name__)
 
 
 default_instructions = """
-    % This is the instructions that is given to the AI at each step in the
-    % story.
+    % This is the instructions that is given to the AI before the story.
     % - All lines starting with percent (%) are removed before given to the AI.
     % - Leave the instructions blank to reset to the default instructions.
 
-    You are an excellent story writer, writing remarkable fantasy fiction.
+    You are an excellent story writer assistant, writing remarkable fantasy
+    fiction. Do not reply with dialog, only with the answers directly.
 
-    You must return plain text, but you could use markdown syntax for chapter
-    titles and bold text. Separate paragraphs with double line shifts.
+    Return in plain text, but use markdown syntax for chapter titles (#) and
+    **bold text**. Separate paragraphs with double line shifts.
 
-    Writing Guidelines: Use first person perspective, and present tense, unless
-    the story starts different. Use writing techniques to bring the world and
-    characters to life. Use rich imagery lightly, but be specific and to the
-    point. Focus on details that makes the story alive. Let the characters
-    develop, and bring out their motivations, relationships, thoughts and
-    complexity. Keep the story on track, but be creative and allow surprising
-    subplots. Include dialog with the characters. Avoid repetition and
-    summarisation. Use humor.
+    Writing Guidelines: Use first person perspective and present tense, unless
+    the story starts differently. Use writing techniques to bring the world and
+    characters to life. Use rich language, but use variations. Vary what words
+    you use. Be specific and to the point. Focus on details that makes the
+    story alive. Let the characters develop, and bring out their motivations,
+    relationships, thoughts and complexity. Keep the story on track, but be
+    creative and allow surprising subplots. Include dialog with the characters.
+    Avoid repetition and summarisation. Use humour.
 
-    Return one sentence, continuing the given story.
     """
 
 
@@ -49,6 +48,7 @@ default_details = """
     % The default is quite generic...
     This is a story about you, going on an adventurous journey. You will
     experience a lot of things, and will be surprised from time to time.
+
     """
 
 
@@ -149,6 +149,14 @@ class GameController(object):
         config.save_config(self.config)
         config.save_secrets(self.secrets)
 
+    def _prompt(self, text):
+        # TODO: move this to a "Prompt helper" object... maybe
+        response = self.nlp.prompt(
+            text=cleanup_text(text),
+            instructions=nlp.remove_internal_comments(default_instructions)
+        )
+        return cleanup_text(response)
+
     def start_new_game(self, _=None):
         self.game = Game(db=self.db, nlp=self.nlp)
         self.game.set_instructions(clean_text_for_saving(default_instructions))
@@ -157,12 +165,18 @@ class GameController(object):
             self.gui.start_input_line("A concept for the story (leave blank "
                                       + "to get a random from the AI)? "))
         if not concept:
-            concept = self.nlp.prompt("Give me a random concept of an exiting "
-                                      + "fantasy story.")
+            concept = self._prompt(
+                "Give me only one idea for an exiting fantasy story, with a "
+                + "short summary of the story. Max 100 words."
+            )
         self.game.set_details(concept)
-        title = cleanup_text(self.nlp.prompt(
+        title = self._prompt(
             "Give me only one title, max 40 characters, for a story with "
-            + "the given concept, without any other feedback: " + concept))
+            + "the given concept, without any other feedback and no newlines: "
+            + concept)
+        # TODO remove newlines, just in case
+        title = title.replace('\n', '')
+        title = title[:50]  # Give it some slack, NLPs aren't good at math
         self.game.set_title(title)
         self.game.add_lines(self.game.get_introduction())
         gamegui = cli_gui.GameWindow(gui=self.gui, choices=self.game_actions,
@@ -259,7 +273,7 @@ class GameController(object):
                 # Ask for API and retry
                 print(e)
                 apikey = input("Input API key: ")
-                keyname = nlp.model2apikey[nlp_class]
+                keyname = nlp_class.secrets_api_key_name
                 self.secrets['DEFAULT'][keyname] = apikey
                 answer = input("Want to save this to secrets.ini? (y/N) ")
                 if answer == 'y':
@@ -312,40 +326,42 @@ class Game(object):
         self.lines.append(text)
         self.save()
 
-    def _generate_prompt(self, text=None):
-        # TODO: Should the instruction go into the NLP object creation, since
-        # the APIs have its own parameter for that? Or are there no difference?
-        prompt = [nlp.remove_internal_comments(self.instructions)]
-        details = nlp.remove_internal_comments(self.details)
+    def _generate_prompt_for_next_lines(self, extra_text=None):
+        """Get the AIs suggestion for the next lines in the given story"""
+        prompt = ["Generate two more sentences, continuing the given story:"]
         prompt.append(f"\n---\nThe title of the story: '{self.title}'")
-        if details.strip():
+        details = nlp.remove_internal_comments(self.details).strip()
+        if details:
             prompt.append("\n---\nImportant details about the story:")
             prompt.append(details)
 
-        prompt.append("\n---\nAnd here is the story so far:")
+        prompt.append("\n---\n<THE-STORY>:\n")
         prompt.extend(self.lines)
-        if text:
-            prompt.append(text)
+        prompt.append("\n\n</THE-STORY>")
+        if extra_text:
+            prompt.append(extra_text)
 
-        prompt = cleanup_text(prompt)
+        return self._prompt(prompt)
 
-        # TODO: check if all APIs support lists of just text
-        return cleanup_text(self.nlp.prompt(prompt))
+    def _prompt(self, text):
+        response = self.nlp.prompt(
+            text=cleanup_text(text),
+            instructions=nlp.remove_internal_comments(self.instructions)
+        )
+        return cleanup_text(response)
 
     def get_introduction(self):
         """Make the AI come up with the initial start of the story."""
-        prompt = [nlp.remove_internal_comments(self.instructions)]
+        prompt = ["Give me three sentences that start this story."]
         details = nlp.remove_internal_comments(self.details)
-        prompt.append(f"\n---\nThe title of the story: '{self.title}'\n")
+        prompt.append(f"The story has the title: '{self.title}'")
         if details.strip():
-            prompt.append("\n---\nImportant details about the story:\n")
+            prompt.append("Important details about the story:")
             prompt.append(details)
-
-        prompt.append("\n---\nGive me three sentences that starts this story.")
-        return cleanup_text(self.nlp.prompt(prompt))
+        return self._prompt(prompt)
 
     def generate_next_lines(self, instructions=None):
-        more = self._generate_prompt(instructions)
+        more = self._generate_prompt_for_next_lines(instructions)
         self.add_lines(more)
         self.save()
         return more

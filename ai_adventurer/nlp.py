@@ -3,6 +3,7 @@
 
 """
 
+import httpx
 import logging
 import time
 
@@ -13,6 +14,10 @@ logger = logging.getLogger(__name__)
 
 
 class NotAuthenticatedError(Exception):
+    pass
+
+
+class TimeoutException(Exception):
     pass
 
 
@@ -193,6 +198,9 @@ class OpenAINLPClient(OnlineNLPClient):
     api_key_url = "https://platform.openai.com/api-keys"
     secrets_api_key_name = "openai-key"
 
+    # Max tokens to return from the AI in prompts
+    max_tokens = 400  # about 100-200 words?
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         from openai import OpenAI
@@ -201,16 +209,20 @@ class OpenAINLPClient(OnlineNLPClient):
             self.modelname = self.openai_model
         logger.debug(f"Model: {self.modelname}")
 
-    def prompt(self, text):
-        super().prompt(text)
+    def prompt(self, text, instructions=None):
+        super().prompt(text, instructions)
         # Reformat the prompt to follow OpenAIs specs:
         new_text = []
+        if instructions:
+            new_text.append({"role": "system", "content": instructions})
         for t in text:
+            # TODO: Add support for separating instructions
             new_text.append({"role": "user", "content": t})
 
         answer = self.client.chat.completions.create(
             model=self.modelname,
             messages=new_text,
+            max_tokens=self.max_tokens,
             stream=False,
         )
         logger.debug("Prompt response: %s", answer)
@@ -240,19 +252,21 @@ class GeminiNLPClient(OnlineNLPClient):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        import google.generativeai as genai
-        genai.configure(api_key=self._get_api_key())
         if not self.modelname:
             self.modelname = self.google_model
-
-        self.client = genai.GenerativeModel(
-            self.modelname, safety_settings=self.safety_settings
-        )
+        import google.generativeai as genai
+        genai.configure(api_key=self._get_api_key())
         logger.debug(f"Model: {self.modelname}")
 
-    def prompt(self, text):
-        super().prompt(text)
-        response = self.client.generate_content(
+    def prompt(self, text, instructions=None):
+        super().prompt(text, instructions)
+        import google.generativeai as genai
+        client = genai.GenerativeModel(
+            self.modelname,
+            safety_settings=self.safety_settings,
+            system_instructions=instructions,
+        )
+        response = client.generate_content(
             contents=text,
         )
         try:
@@ -274,7 +288,7 @@ class MistralNLP(OnlineNLPClient):
     max_tokens = 400  # about 100-200 words?
 
     # Waiting limit when waiting for response from the AIs API
-    timeout_ms = 20000
+    timeout_ms = 120000
 
     mistral_model = "open-mistral-nemo"
     api_key_url = "https://console.mistral.ai/api-keys/"
@@ -287,23 +301,29 @@ class MistralNLP(OnlineNLPClient):
         if not self.modelname:
             self.modelname = self.mistral_model
 
-    def prompt(self, text):
-        super().prompt(text)
+    def prompt(self, text, instructions=None):
+        super().prompt(text, instructions)
+        # TODO: change this, separating the client functionality more from
+        # handling the text and instrutions
 
-        # Reformat the prompt to follow OpenAIs specs:
+        # Reformat the prompt to follow Mistrals specs:
         new_text = []
+        if instructions:
+            new_text.append({"role": "system", "content": instructions})
         for t in text:
             new_text.append({"role": "user", "content": t})
 
         logger.debug(f"model {self.modelname}")
 
         import mistralai
+        starttime = time.time()
         try:
             response = self.client.chat.complete(
                 model=self.modelname,
                 messages=new_text,
                 max_tokens=self.max_tokens,
                 timeout_ms=self.timeout_ms,
+                safe_prompt=False,
                 stream=False,
             )
         except mistralai.models.sdkerror.SDKError as e:
@@ -311,6 +331,10 @@ class MistralNLP(OnlineNLPClient):
                 raise NotAuthenticatedError(e)
             logger.critical(e, exc_info=True)
             raise e
+        except httpx.ReadTimeout as e:
+            raise TimeoutException(e)
+
+        logger.debug("Response time: %.3f", time.time() - starttime)
         answer = response.choices[0].message.content
         logger.debug("Prompt response: %s", answer)
         return answer
@@ -328,12 +352,6 @@ models = {
     # TODO: would probably also need a file name
     # "local": LocalNLPClient,
     "huggingface": HuggingfaceNLPClient,
-}
-
-model2apikey = {
-    GeminiNLPClient: 'gemini-key',
-    OpenAINLPClient: 'openai-key',
-    MistralNLP: 'mistral-key',
 }
 
 
