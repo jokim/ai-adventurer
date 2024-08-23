@@ -112,10 +112,7 @@ class GUI(object):
         # TODO: move this to GameWindow somehow
         """Send a message to the status field on the screen"""
         print(self.term.move_xy(1, self.term.height - 3), end="")
-        print(
-            self.term.ljust(message, width=self.term.width - 1, fillchar=" "),
-            end="",
-        )
+        print(message, end="")
 
 
 class Window(object):
@@ -151,10 +148,18 @@ class Window(object):
             title = f"{title} - {self.game_title}"
         else:
             title = self.game_title
+        title = self.term.truncate(title, width=self.term.width)
+
+        # Blank out the screen, to make sure old data is removed. This is
+        # probably the wrong solution.
+        with self.term.location(0, 0):
+            for i in range(self.term.height):
+                print(self.term.ljust(self.term.on_black(" "),
+                                      width=self.term.width))
+
         print(self.term.home + self.term.on_black + self.term.clear, end="")
         print(self.term.black_on_darkorange_bold(
               self.term.ljust(self.term.black_on_darkorange_bold(title))))
-        # TODO: cut the title at length of line
 
     def _get_footer_content(self, message=None):
         ret = []
@@ -210,23 +215,13 @@ class MenuWindow(Window):
 
         choices = self.choices.copy()
         choices.update(self.internal_choices)
-
-        y_pos = 1
-        y_max = self.term.height - 3
-
         for key, options in choices.items():
             if key == "KEY_ENTER":
                 key = "Enter"
-            print(self.term.ljust(self.term.bold(str(key)) + " - " +
-                                  options[0], width=self.term.width))
-            y_pos += 1
+            print(self.term.bold(str(key)) + " - " + options[0])
         if message:
             print()
             print(message)
-            y_pos += 2
-        while y_pos <= y_max:
-            print(self.term.ljust(" ", width=self.term.width))
-            y_pos += 1
 
 
 class EditorWindow(Window):
@@ -343,10 +338,8 @@ class TableEditWindow(EditorWindow):
         )
 
     def _print_screen(self, message=None):
+        """Print the table view"""
         self._print_header()
-
-        y_pos = 1
-        y_max = self.term.height - 3
 
         for i, line in enumerate(self.data):
             if i == self.focus:
@@ -355,12 +348,7 @@ class TableEditWindow(EditorWindow):
             for i, element in enumerate(line):
                 formatter = self.format[i]
                 txt += formatter % (element,)
-            print(self.term.ljust(txt, width=self.term.width)
-                  + self.term.normal)
-            y_pos += 1
-        while y_pos <= y_max:
-            print(self.term.ljust(" ", width=self.term.width))
-            y_pos += 1
+            print(txt + self.term.normal)
         self._print_footer_menu(message=message)
 
 
@@ -413,8 +401,7 @@ class GameWindow(EditorWindow):
             line_nr = focus + 1
 
         if len(lines) == 0:
-            print(self.term.ljust(self.term.gray("No content yet..."),
-                                  width=self.term.width))
+            print(self.term.gray("No content yet..."))
             y_pos -= 1
         else:
             while line_nr >= 0:
@@ -427,7 +414,7 @@ class GameWindow(EditorWindow):
                 for row in reversed(rows):
                     if line_nr == focus:
                         print(self.term.standout, end="")
-                    print(self.term.ljust(row, width=self.term.width), end="")
+                    print(row, end="")
                     print(self.term.normal, end="")
 
                     y_pos -= 1
@@ -436,8 +423,8 @@ class GameWindow(EditorWindow):
                     print(self.term.move_xy(0, y_pos), end="")
 
                 line_nr -= 1
-        while y_pos >= y_min:
-            print(self.term.move_xy(0, y_pos)
-                  + self.term.ljust(" ", width=self.term.width),
-                  end="")
-            y_pos -= 1
+        # while y_pos >= y_min:
+        #     print(self.term.move_xy(0, y_pos)
+        #           + self.term.ljust(" ", width=self.term.width),
+        #           end="")
+        #     y_pos -= 1
