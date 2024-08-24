@@ -13,29 +13,6 @@ import nlp
 logger = logging.getLogger(__name__)
 
 
-default_instructions = """
-    % This is the instructions that is given to the AI before the story.
-    % - All lines starting with percent (%) are removed before given to the AI.
-    % - Leave the instructions blank to reset to the default instructions.
-
-    You are an excellent story writer assistant, writing remarkable fantasy
-    fiction. Do not reply with dialog, only with the answers directly.
-
-    Return in plain text, but use markdown syntax for chapter titles (#) and
-    **bold text**. Separate paragraphs with double line shifts.
-
-    Writing Guidelines: Use first person perspective and present tense, unless
-    the story starts differently. Use writing techniques to bring the world and
-    characters to life. Use rich language, but use variations. Vary what words
-    you use. Be specific and to the point. Focus on details that makes the
-    story alive. Let the characters develop, and bring out their motivations,
-    relationships, thoughts and complexity. Keep the story on track, but be
-    creative and allow surprising subplots. Include dialog with the characters.
-    Avoid repetition and summarisation. Use humour.
-
-    """
-
-
 default_details = """
     % Story summary and details.
     %
@@ -149,36 +126,20 @@ class GameController(object):
         config.save_config(self.config)
         config.save_secrets(self.secrets)
 
-    def _prompt(self, text):
-        # TODO: move this to a "Prompt helper" object... maybe
-        response = self.nlp.prompt(
-            text=cleanup_text(text),
-            instructions=nlp.remove_internal_comments(default_instructions)
-        )
-        return cleanup_text(response)
-
     def start_new_game(self, _=None):
         self.game = Game(db=self.db, nlp=self.nlp)
-        self.game.set_instructions(clean_text_for_saving(default_instructions))
+        self.game.set_instructions(
+            clean_text_for_saving(self.nlp.default_instructions))
 
         concept = cleanup_text(
             self.gui.start_input_line("A concept for the story (leave blank "
                                       + "to get a random from the AI)? "))
         if not concept:
-            concept = self._prompt(
-                "Give me only one idea for an exiting fantasy story, with a "
-                + "short summary of the story. Max 100 words."
-            )
+            concept = self.nlp.prompt_for_concept()
         self.game.set_details(concept)
-        title = self._prompt(
-            "Give me only one title, max 40 characters, for a story with "
-            + "the given concept, without any other feedback and no newlines: "
-            + concept)
-        # TODO remove newlines, just in case
-        title = title.replace('\n', '')
-        title = title[:50]  # Give it some slack, NLPs aren't good at math
+        title = self.nlp.prompt_for_title(concept)
         self.game.set_title(title)
-        self.game.add_lines(self.game.get_introduction())
+        self.game.add_lines(self.nlp.prompt_for_introduction(self.game))
         gamegui = cli_gui.GameWindow(gui=self.gui, choices=self.game_actions,
                                      game=self.game)
         self.start_game_input_loop(self.game, gamegui,
@@ -241,8 +202,10 @@ class GameController(object):
         new_instructions = self.gui.start_input_edit_text(
             game.instructions)
 
-        if not nlp.remove_internal_comments(new_instructions.strip()).strip():
-            new_instructions = clean_text_for_saving(default_instructions)
+        if not self.nlp.remove_internal_comments(
+                new_instructions.strip()).strip():
+            new_instructions = clean_text_for_saving(
+                self.nlp.default_instructions)
 
         game.set_instructions(new_instructions)
         return "Instructions updated"
@@ -250,40 +213,31 @@ class GameController(object):
     def edit_story_details(self, game, gamegui, lineid, oldline):
         new_details = self.gui.start_input_edit_text(game.details)
 
-        if not nlp.remove_internal_comments(new_details.strip()).strip():
+        if not self.nlp.remove_internal_comments(new_details.strip()).strip():
             new_details = clean_text_for_saving(default_details)
 
         game.set_details(new_details)
         return "Story summary updated"
 
     def get_nlp_handler(self):
-        if not hasattr(self, "nlp"):
-            model = self.config["DEFAULT"]["nlp_model"]
-            extra = None
-            if ':' in model:
-                model, extra = model.split(':', 1)
-            if model in ('local', 'huggingface') and extra is None:
-                raise Exception("Missing param for NLP model, after : in conf")
-            logger.debug(f"Loading NLP {model!r} with param {extra!r}")
-            nlp_class = nlp.get_nlp_class(model)
-            try:
-                self.nlp = nlp_class(secrets=self.secrets, extra=extra,
-                                     modelname=model)
-            except nlp.NotAuthenticatedError as e:
-                # Ask for API and retry
-                print(e)
-                apikey = input("Input API key: ")
-                keyname = nlp_class.secrets_api_key_name
-                self.secrets['DEFAULT'][keyname] = apikey
-                answer = input("Want to save this to secrets.ini? (y/N) ")
-                if answer == 'y':
-                    config.save_secrets(self.secrets)
-                self.nlp = nlp_class(secrets=self.secrets, extra=extra,
-                                     modelname=model)
-        return self.nlp
+        modelname = self.config["DEFAULT"]["nlp_model"]
+        try:
+            return nlp.NLPHandler(modelname, secrets=self.secrets)
+        except nlp.NotAuthenticatedError as e:
+            # Ask for API-key and retry
+            print(e)
+            apikey = input("Input API key: ")
+            keyname = nlp.get_nlp_class(modelname).secrets_api_key_name
+            self.secrets['DEFAULT'][keyname] = apikey
+            answer = input("Want to save this to secrets.ini? (y/N) ")
+            if answer == 'y':
+                config.save_secrets(self.secrets)
+            return nlp.NLPHandler(modelname, secrets=self.secrets)
 
 
+# TODO: Move this to its own file - game.py?
 class Game(object):
+    """The game itself"""
 
     def __init__(self, db, nlp, gameid=None):
         self.db = db
@@ -326,42 +280,8 @@ class Game(object):
         self.lines.append(text)
         self.save()
 
-    def _generate_prompt_for_next_lines(self, extra_text=None):
-        """Get the AIs suggestion for the next lines in the given story"""
-        prompt = ["Generate two more sentences, continuing the given story:"]
-        prompt.append(f"\n---\nThe title of the story: '{self.title}'")
-        details = nlp.remove_internal_comments(self.details).strip()
-        if details:
-            prompt.append("\n---\nImportant details about the story:")
-            prompt.append(details)
-
-        prompt.append("\n---\n<THE-STORY>:\n")
-        prompt.extend(self.lines)
-        prompt.append("\n\n</THE-STORY>")
-        if extra_text:
-            prompt.append(extra_text)
-
-        return self._prompt(prompt)
-
-    def _prompt(self, text):
-        response = self.nlp.prompt(
-            text=cleanup_text(text),
-            instructions=nlp.remove_internal_comments(self.instructions)
-        )
-        return cleanup_text(response)
-
-    def get_introduction(self):
-        """Make the AI come up with the initial start of the story."""
-        prompt = ["Give me three sentences that start this story."]
-        details = nlp.remove_internal_comments(self.details)
-        prompt.append(f"The story has the title: '{self.title}'")
-        if details.strip():
-            prompt.append("Important details about the story:")
-            prompt.append(details)
-        return self._prompt(prompt)
-
-    def generate_next_lines(self, instructions=None):
-        more = self._generate_prompt_for_next_lines(instructions)
+    def generate_next_lines(self):
+        more = self.nlp.prompt_for_next_lines(self)
         self.add_lines(more)
         self.save()
         return more

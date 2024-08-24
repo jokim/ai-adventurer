@@ -5,6 +5,7 @@
 
 import httpx
 import logging
+import re
 import time
 
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
@@ -19,26 +20,6 @@ class NotAuthenticatedError(Exception):
 
 class TimeoutException(Exception):
     pass
-
-
-def remove_internal_comments(text):
-    """Remove internal comments from given text - lines starting with "%".
-
-    Useful to filter out internal comments before giving it to the AI, reducing
-    token usage.
-
-    Example::
-
-        % This is an internal comment, used for helping the end user
-        This is the text that the AI language model should care about.
-
-    """
-    ret = []
-    for line in text.splitlines():
-        line = line.lstrip()
-        if not line.startswith("%"):
-            ret.append(line)
-    return "\n".join(ret)
 
 
 class NLPClient(object):
@@ -183,11 +164,43 @@ class OnlineNLPClient(NLPClient):
             api_key = self.secrets["DEFAULT"][self.secrets_api_key_name]
         except TypeError:
             pass
+        except KeyError:
+            pass
 
         if not api_key or api_key == "CHANGEME":
             raise NotAuthenticatedError(
                 "Invalid API key - see " + self.api_key_url)
         return api_key
+
+
+class MockOnlineNLPClient(OnlineNLPClient):
+    """Simulating NLP behaviour of online model"""
+
+    mock_model = "mock-online"
+
+    api_key_url = "https://example.com/api-key"
+    secrets_api_key_name = "mock-online-key"
+
+    replies = (
+        "The guy asked around.",
+        "The girl looked at you.",
+        '"What?!" she asked, looking at you.',
+        '"Well well well," he said.',
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not self.modelname:
+            self.modelname = self.mock_model
+        self.apikey = self._get_api_key()
+
+    def prompt(self, text=None, instructions=None):
+        super().prompt(text, instructions)
+        import random
+
+        response = random.choice(self.replies)
+        logger.debug("Prompt response: %s", response)
+        return response
 
 
 class OpenAINLPClient(OnlineNLPClient):
@@ -340,7 +353,7 @@ class MistralNLP(OnlineNLPClient):
         return answer
 
 
-models = {
+nlp_models = {
     "gemini-1.5-flash": GeminiNLPClient,
     "gemini-1.5-pro": GeminiNLPClient,
     "gemini-1.0-pro": GeminiNLPClient,
@@ -349,6 +362,7 @@ models = {
     "open-mistral-nemo": MistralNLP,
     "mistral-large-latest": MistralNLP,
     "mock": MockNLPClient,
+    "mock-online": MockOnlineNLPClient,
     # TODO: would probably also need a file name
     # "local": LocalNLPClient,
     "huggingface": HuggingfaceNLPClient,
@@ -356,4 +370,155 @@ models = {
 
 
 def get_nlp_class(model):
-    return models[model]
+    return nlp_models[model]
+
+
+class NLPHandler(object):
+    """Layer between the game and the NLP client.
+
+    Handling the NLP stuff that is not directly part of the client
+    functionality.
+
+    """
+
+    default_instructions = """
+        % This is the instructions that is given to the AI before the story.
+        % - All lines starting with percent (%) are removed for the AI.
+        % - Leave the instructions blank to reset to the default instructions.
+
+        You are an excellent story writer assistant, writing remarkable fantasy
+        fiction. Do not reply with dialog, only with the answers directly.
+
+        Return in plain text, but use markdown syntax for chapter titles (#)
+        and **bold text**. Separate paragraphs with double line shifts.
+
+        Writing Guidelines: Use first person perspective and present tense,
+        unless the story starts differently. Use writing techniques to bring
+        the world and characters to life. Use rich language, but use
+        variations. Vary what words you use. Be specific and to the point.
+        Focus on details that makes the story alive. Let the characters
+        develop, and bring out their motivations, relationships, thoughts and
+        complexity. Keep the story on track, but be creative and allow
+        surprising subplots. Include dialog with the characters. Avoid
+        repetition and summarisation. Use humour.
+
+        """
+
+    def __init__(self, modelname, secrets):
+        self.nlp_client = self.load_model(modelname, secrets)
+
+    @staticmethod
+    def load_model(modelname, secrets):
+        """Instantiate correct NLP model by given input"""
+        extra = None
+        if ':' in modelname:
+            modelname, extra = modelname.split(':', 1)
+        # if modelname in ('local', 'huggingface') and extra is None:
+        #     raise Exception("Missing param for NLP model, after : in conf")
+        logger.debug(f"Loading NLP {modelname!r} with param {extra!r}")
+        nlp_class = nlp_models[modelname]
+        return nlp_class(secrets=secrets, extra=extra, modelname=modelname)
+
+    def clean_text(self, text):
+        """Remove unneccessary white space and other generic mess"""
+        if isinstance(text, (list, tuple)):
+            return [self.clean_text(t) for t in text]
+        # Replace multiple newlines with at most two (keeping paragraphs)
+        text = re.sub(r"\n{3,}", "\n\n", text)
+        # Replace multiple spaces with a single space
+        text = re.sub(r"[ \t\r\f\v]+", " ", text)
+        return text
+
+    @staticmethod
+    def remove_internal_comments(text):
+        """Remove internal comments from given text - lines starting with "%".
+
+        Useful to filter out internal comments before giving it to the AI,
+        reducing token usage.
+
+        Example::
+
+            % This is an internal comment, used for helping the end user
+            This is the text that the AI language model should care about.
+
+        """
+        ret = []
+        for line in text.splitlines():
+            line = line.lstrip()
+            if not line.startswith("%"):
+                ret.append(line)
+        return "\n".join(ret)
+
+    def prompt(self, text, instructions=None, return_raw=False):
+        """Ask the NLP and return the result"""
+        # TODO: handle the text in various formats
+        if instructions is None:
+            instructions = self.default_instructions
+
+        response = self.nlp_client.prompt(
+            # TODO: use self.remove_internal_comments on text input too?
+            text=self.clean_text(text),
+            instructions=self.remove_internal_comments(instructions)
+        )
+        if return_raw:
+            return response
+        return self.clean_text(response)
+
+    def prompt_for_concept(self):
+        """Ask the AI for a random concept for a story and return it."""
+        concept = self.prompt(
+            """Give me 100-200 words describing an idea for one exiting fantasy
+            story. Only return one story. Return a summary of the story,
+            including a chapter layout and character descriptions. Do not start
+            the story.""")
+        # TODO; might change this depending on what AI model to use?
+        return concept
+
+    def prompt_for_title(self, concept_or_summary):
+        """Get a title suggestion from the given story concept/summary"""
+        title = self.prompt(
+            f"""Give me only one title, max 40 characters, for a story with
+            the given concept, without any other feedback and no newlines:
+            {concept_or_summary}
+            """)
+        # TODO; might change this depending on what AI model to use
+
+        # Some models respond weirdly to this, with a lot of newlines.
+        title = title.replace('\n', '')
+        title = title[:50]  # Give it some slack, NLPs aren't good at math
+        return title
+
+    def prompt_for_introduction(self, game):
+        """Get AIs suggestion for the first sentences, starting the story"""
+        prompt = ["Give me three sentences that start this story."]
+        # TODO: Change this to the prompt model!
+        details = self.remove_internal_comments(game.details).strip()
+        prompt.append(f"The story has the title: '{game.title}'")
+        if details:
+            prompt.append("Important details about the story:")
+            prompt.append(details)
+        return self.prompt(prompt)
+
+    def prompt_for_next_lines(self, game):
+        """Get next few lines from the AI, continuing the story.
+
+        @type game: run.Game
+        @param game: The game to continue the story from.
+
+        @rtype: str
+        @return: A few sentences, from the AI.
+
+        """
+        # TODO: Change this to the prompt model!
+        prompt = ["Generate two more sentences, continuing the given story:"]
+        prompt.append(f"\n---\nThe title of the story: '{game.title}'")
+
+        details = self.remove_internal_comments(game.details).strip()
+        if details:
+            prompt.append("\n---\nImportant details about the story:")
+            prompt.append(details)
+
+        prompt.append("\n---\n<THE-STORY>:\n")
+        prompt.extend(game.lines)
+        prompt.append("\n\n</THE-STORY>")
+        return self.prompt(prompt)

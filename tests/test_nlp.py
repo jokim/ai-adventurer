@@ -11,7 +11,7 @@ def test_load_base_nlpclient():
 
 
 def test_all_online_models_load_but_not_authenticate():
-    for modelname in nlp.models:
+    for modelname in nlp.nlp_models:
         model = nlp.get_nlp_class(modelname)
         if issubclass(model, nlp.OnlineNLPClient):
             with pytest.raises(nlp.NotAuthenticatedError):
@@ -24,25 +24,82 @@ def get_fake_secrets():
 
 def test_all_online_models_load_with_fake_auth():
     secrets = get_fake_secrets()
-    for modelname in nlp.models:
+    for modelname in nlp.nlp_models:
         model = nlp.get_nlp_class(modelname)
         if issubclass(model, nlp.OnlineNLPClient):
-            secrets['DEFAULT'][model.secrets_api_key_name] = 'fakeapi-key'
+            secrets['DEFAULT'][model.secrets_api_key_name] = 'fake-API-key'
             model(secrets=secrets)
 
 
+def test_load_handler():
+    nlp.NLPHandler('mock', get_fake_secrets())
+
+
+def test_load_handler_online_notauthenticated():
+    with pytest.raises(nlp.NotAuthenticatedError):
+        nlp.NLPHandler('mock-online', get_fake_secrets())
+
+
+def test_load_handler_online():
+    secrets = get_fake_secrets()
+    mock_class = nlp.get_nlp_class('mock-online')
+    secrets['DEFAULT'][mock_class.secrets_api_key_name] = 'fake-API-key'
+    nlp.NLPHandler('mock-online', secrets)
+
+
+def get_mock_handler():
+    secrets = get_fake_secrets()
+    mock_class = nlp.get_nlp_class('mock-online')
+    secrets['DEFAULT'][mock_class.secrets_api_key_name] = 'fake-API-key'
+    return nlp.NLPHandler('mock-online', secrets)
+
+
+def test_base_prompt():
+    handler = get_mock_handler()
+    ret = handler.prompt("What?")
+    assert isinstance(ret, str)
+    assert len(ret) > 0
+
+
+def test_base_prompt_with_instructions():
+    handler = get_mock_handler()
+    ret = handler.prompt("What?", instructions="Reply as a pirate")
+    # TODO: get pytest to verify that the internal prompt actually uses the
+    # instruction?
+    assert isinstance(ret, str)
+    assert len(ret) > 0
+
+
+def test_get_concept():
+    handler = get_mock_handler()
+    ret = handler.prompt_for_concept()
+    assert isinstance(ret, str)
+    assert len(ret) > 0
+
+
+def test_get_title():
+    handler = get_mock_handler()
+    ret = handler.prompt_for_title("Just a random story")
+    assert isinstance(ret, str)
+    assert len(ret) > 0
+
+# TODO: Test the handler more
+
+
 def test_remove_internal_comments():
+    handler = get_mock_handler()
     prompt = ("% This is internal and shall not pass!"
               + "\n"
               + "But this should")
-    cleaned = nlp.remove_internal_comments(prompt)
+    cleaned = handler.remove_internal_comments(prompt)
     assert cleaned == "But this should"
     assert prompt != cleaned
     assert "This is internal" not in cleaned
 
 
 def test_remove_internal_comments_but_keep_anything_else():
+    handler = get_mock_handler()
     prompt = "This is not internal, but contains a % now and then"
-    cleaned = nlp.remove_internal_comments(prompt)
+    cleaned = handler.remove_internal_comments(prompt)
     assert cleaned == prompt
     assert "now and then" in cleaned
