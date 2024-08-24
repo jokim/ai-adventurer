@@ -352,6 +352,12 @@ class TableEditWindow(EditorWindow):
         self._print_footer_menu(message=message)
 
 
+def convert_gamelines_to_paragraphs(lines):
+    """Merge game lines into paragraphs."""
+    tmp = " ".join(lines)
+    return tuple(s.strip() for s in tmp.split("\n\n"))
+
+
 class GameWindow(EditorWindow):
 
     text_width = 120
@@ -382,6 +388,8 @@ class GameWindow(EditorWindow):
 
         focus = self.focus
         lines = self.data.lines
+
+        # lines = convert_gamelines_to_paragraphs(lines)
 
         # Start at the bottom and work upwards
         print(self.term.move_xy(0, y_pos), end="")
@@ -423,8 +431,3 @@ class GameWindow(EditorWindow):
                     print(self.term.move_xy(0, y_pos), end="")
 
                 line_nr -= 1
-        # while y_pos >= y_min:
-        #     print(self.term.move_xy(0, y_pos)
-        #           + self.term.ljust(" ", width=self.term.width),
-        #           end="")
-        #     y_pos -= 1
