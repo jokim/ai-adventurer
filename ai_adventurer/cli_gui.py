@@ -49,6 +49,13 @@ class GUI(object):
         newline = input(question).strip()
         return newline
 
+    def start_input_confirm(self, question="Are you sure?", suffix=" (y/N): "):
+        """Ask the user a yes/no-question and return the boolean answer"""
+        answer = self.start_input_line(question + suffix)
+        if answer == 'y':
+            return True
+        return False
+
     def start_input_edit_text(self, old_text):
         """Ask user to edit given text and return the new one."""
         # Just make use of an editor instead

@@ -83,6 +83,48 @@ def test_get_title():
     assert isinstance(ret, str)
     assert len(ret) > 0
 
+
+def test_prompt_converter_string():
+    test = "This is a string"
+
+    # Base model should only handle text
+    nlp_client = nlp.NLPClient()
+    ret = nlp_client.convert_to_prompt(test)
+    assert ret == test
+
+    # Most online models take a more structured approach
+    nlp_client = nlp.OnlineNLPClient()
+    ret = nlp_client.convert_to_prompt(test)
+    assert ret == [{'role': 'user', 'content': test}]
+
+
+def test_prompt_converter_strings():
+    client = nlp.OnlineNLPClient()
+    test = ["This is a string", "Another"]
+    ret = client.convert_to_prompt(test)
+    assert ret == [{'role': 'user', 'content': test[0]},
+                   {'role': 'user', 'content': test[1]}]
+
+
+def test_prompt_converter_dict():
+    client = nlp.OnlineNLPClient()
+    test = [{'role': 'system', 'content': "This is a string"}]
+    ret = client.convert_to_prompt(test)
+    assert ret == test
+
+
+def test_prompt_converter_dicts():
+    test = [
+        {'role': 'system', 'content': "This is a string"},
+        {'role': 'user', 'content': "Another"},
+        {'role': 'system', 'content': "And third"},
+    ]
+    client = nlp.OnlineNLPClient()
+    ret = client.convert_to_prompt(test)
+    assert ret == test
+
+# TODO: test changing the format to the different AI APIs format
+
 # TODO: Test the handler more
 
 

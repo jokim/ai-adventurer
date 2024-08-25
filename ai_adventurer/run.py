@@ -4,10 +4,10 @@ import argparse
 import logging
 import re
 
-import cli_gui
-import config
-import db
-import nlp
+from ai_adventurer import cli_gui
+from ai_adventurer import config
+from ai_adventurer import db
+from ai_adventurer import nlp
 
 
 logger = logging.getLogger(__name__)
@@ -57,7 +57,6 @@ class GameController(object):
         self.secrets = secrets
         self.gui = cli_gui.GUI()
         self.db = db.Database()
-        self.nlp = self.get_nlp_handler()
         self.game_actions = {
             "r": ("Retry", self.retry_line),
             "e": ("Edit", self.edit_active_line),
@@ -70,6 +69,7 @@ class GameController(object):
         }
 
     def run(self):
+        self.nlp = self.get_nlp_handler()
         with self.gui.activate():
             self.start_mainmenu_loop()
 
@@ -92,6 +92,7 @@ class GameController(object):
     def start_game_lister(self):
         choices = {
             'd': ('Delete', self.delete_game),
+            'c': ('Copy', self.copy_game),
             'n': ('New', self.start_new_game),
             'KEY_ENTER': ('Load', self.load_game),
         }
@@ -119,8 +120,14 @@ class GameController(object):
         self.start_game_input_loop(self.game, gamegui, message="Game loaded")
 
     def delete_game(self, gamedata):
-        self.db.delete_game(gamedata[0])
-        return "Game deleted"
+        if self.gui.start_input_confirm(
+                f"Delete game {gamedata[0]} - '{gamedata[1]}'?"):
+            self.db.delete_game(gamedata[0])
+            return "Game deleted"
+
+    def copy_game(self, gamedata):
+        self.db.copy_game(gamedata[0])
+        return "Game copied"
 
     def edit_config(self):
         config.save_config(self.config)

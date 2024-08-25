@@ -85,6 +85,15 @@ class Database(object):
             session.delete(game)
             session.commit()
 
+    def copy_game(self, gameid):
+        assert isinstance(gameid, int)
+        raise Exception("Not implemented yet")
+        # with orm.Session(self._engine) as session:
+        #     game = self._get_game(gameid, _session=session)
+        #     # session.delete(game) # .copy(game)?
+        #     session.commit()
+        #     # TODO: missing copy functionality
+
     def _get_game(self, gameid, _session=None):
         if not _session:
             _session = orm.Session(self._engine)

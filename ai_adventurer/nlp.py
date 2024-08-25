@@ -38,10 +38,14 @@ class NLPClient(object):
 
         Adds the previous dialog to the prompt, for giving context.
         """
-        if instructions:
-            assert isinstance(instructions, str), "Instructions must be string"
         logger.debug("Prompt instruction given: %s", instructions)
         logger.debug("Prompt given: %s", text)
+
+    def convert_to_prompt(self, text, role='user'):
+        """Convert text or list with text to the NLP's formats."""
+        if isinstance(text, str):
+            return text
+        return "\n".join(text)
 
 
 class MockNLPClient(NLPClient):
@@ -82,9 +86,7 @@ class LocalNLPClient(NLPClient):
 
     def prompt(self, text, instructions=None):
         super().prompt(text, instructions)
-
-        if isinstance(text, (list, tuple)):
-            text = "\n".join(text)
+        text = self.convert_to_prompt(text, role="user")
         if instructions:
             text = instructions + " " + text
 
@@ -126,11 +128,11 @@ class HuggingfaceNLPClient(NLPClient):
                         model_kwargs={"torch_dtype": torch.bfloat16},
                         device_map="auto")
 
-    def prompt(self, text):
-        super().prompt(text)
-
-        if isinstance(text, (list, tuple)):
-            text = "\n".join(text)
+    def prompt(self, text, instructions=None):
+        super().prompt(text, instructions)
+        text = self.convert_to_prompt(text, role="user")
+        if instructions:
+            text = instructions + " " + text
         output = self._generate(text)
         return output
 
@@ -172,6 +174,34 @@ class OnlineNLPClient(NLPClient):
                 "Invalid API key - see " + self.api_key_url)
         return api_key
 
+    def convert_to_prompt(self, text, role='user'):
+        """Convert text or list with text to the NLP's formats.
+
+        Using the format that some APIs use:
+
+            {'role': 'system', 'content': 'You are...'},
+            {'role': 'user', 'content': 'Could you...'},
+
+        where `role` vary.
+
+        Override in subclasses.
+
+        @param role: Only 'user' and 'system' is supported for now.
+
+        """
+        assert role in ('user', 'system')
+        if isinstance(text, str):
+            text = (text,)
+        if isinstance(text, dict):
+            text = (text,)
+        ret = []
+        for t in text:
+            if isinstance(t, dict):
+                ret.append(t)
+            else:
+                ret.append({"role": role, "content": t})
+        return ret
+
 
 class MockOnlineNLPClient(OnlineNLPClient):
     """Simulating NLP behaviour of online model"""
@@ -204,7 +234,11 @@ class MockOnlineNLPClient(OnlineNLPClient):
 
 
 class OpenAINLPClient(OnlineNLPClient):
-    """NLP models from OpenAI"""
+    """NLP models from OpenAI
+
+    https://platform.openai.com/docs/api-reference/chat
+
+    """
 
     openai_model = "gpt-4o-mini"
 
@@ -227,15 +261,15 @@ class OpenAINLPClient(OnlineNLPClient):
         # Reformat the prompt to follow OpenAIs specs:
         new_text = []
         if instructions:
-            new_text.append({"role": "system", "content": instructions})
-        for t in text:
-            # TODO: Add support for separating instructions
-            new_text.append({"role": "user", "content": t})
+            new_text.append(self.convert_to_prompt(instructions,
+                                                   role='system'))
+        new_text.extend(self.convert_to_prompt(text))
 
         answer = self.client.chat.completions.create(
             model=self.modelname,
             messages=new_text,
             max_tokens=self.max_tokens,
+            n=1,
             stream=False,
         )
         logger.debug("Prompt response: %s", answer)
@@ -243,7 +277,11 @@ class OpenAINLPClient(OnlineNLPClient):
 
 
 class GeminiNLPClient(OnlineNLPClient):
-    """NLP models from Google"""
+    """NLP models from Google.
+
+    https://ai.google.dev/api/generate-content
+
+    """
 
     google_model = "gemini-1.5-flash"
 
@@ -293,9 +331,40 @@ class GeminiNLPClient(OnlineNLPClient):
         logger.debug("Prompt response: %s", answer)
         return answer
 
+    def convert_to_prompt(self, text, role='user'):
+        """Convert to Geminis prompt format.
+
+        The format:
+
+            {'role': 'model', 'parts': "You are..."},
+            {'role': 'user', 'parts': "Can you..."},
+
+        @param role:
+            The 'system' and 'user' is supported. 'system' is converted to
+            Geminis 'model'.
+
+        """
+        if role == 'system':
+            role = 'model'
+        if isinstance(text, str):
+            text = (text,)
+        if isinstance(text, dict):
+            text = (text,)
+        ret = []
+        for t in text:
+            if isinstance(t, dict):
+                ret.append(t)
+            else:
+                ret.append({"role": role, "parts": t})
+        return ret
+
 
 class MistralNLP(OnlineNLPClient):
-    """NLP models from Mistral.ai"""
+    """NLP models from Mistral.ai.
+
+    https://docs.mistral.ai/api/
+
+    """
 
     # Max tokens to return from the AI in prompts
     max_tokens = 400  # about 100-200 words?
@@ -351,6 +420,16 @@ class MistralNLP(OnlineNLPClient):
         answer = response.choices[0].message.content
         logger.debug("Prompt response: %s", answer)
         return answer
+
+    def convert_to_prompt(self, text, role='user', prefix=False):
+        """Convert text or list with text to the NLP's formats.
+
+        Mistral has support for a prefix variable too.
+
+        """
+        super().convert_to_prompt(text, role)
+        if prefix:
+            raise Exception("Not implemented")
 
 
 nlp_models = {
@@ -472,6 +551,10 @@ class NLPHandler(object):
             including a chapter layout and character descriptions. Do not start
             the story.""")
         # TODO; might change this depending on what AI model to use?
+
+        # TODO: Make use of the APIs possibility to fill a object with the
+        # proper data. Could then fetch both title, and story details in the
+        # same turn.
         return concept
 
     def prompt_for_title(self, concept_or_summary):
