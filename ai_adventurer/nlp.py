@@ -265,6 +265,7 @@ class OpenAINLPClient(OnlineNLPClient):
                                                    role='system'))
         new_text.extend(self.convert_to_prompt(text))
 
+        starttime = time.time()
         answer = self.client.chat.completions.create(
             model=self.modelname,
             messages=new_text,
@@ -272,8 +273,10 @@ class OpenAINLPClient(OnlineNLPClient):
             n=1,
             stream=False,
         )
+        logger.debug("Response time: %.3f", time.time() - starttime)
         logger.debug("Prompt response: %s", answer)
-        return answer.choices[0].message.content
+        answer = answer.choices[0].message.content
+        return answer
 
 
 class GeminiNLPClient(OnlineNLPClient):
@@ -317,14 +320,17 @@ class GeminiNLPClient(OnlineNLPClient):
             safety_settings=self.safety_settings,
             system_instruction=instructions,
         )
+        starttime = time.time()
         response = client.generate_content(
             contents=text,
         )
+        logger.debug("Response time: %.3f", time.time() - starttime)
         try:
             answer = response.text
         except ValueError:
             logger.debug(response.prompt_feedback)
             logger.debug("Blocked by Gemini: '%r'", response)
+            # TODO: rather raise an exception?
             answer = str(response.prompt_feedback)
             logger.debug("Returning: '%r'", answer)
 
@@ -385,17 +391,12 @@ class MistralNLP(OnlineNLPClient):
 
     def prompt(self, text, instructions=None):
         super().prompt(text, instructions)
-        # TODO: change this, separating the client functionality more from
-        # handling the text and instrutions
-
         # Reformat the prompt to follow Mistrals specs:
         new_text = []
         if instructions:
-            new_text.append({"role": "system", "content": instructions})
-        for t in text:
-            new_text.append({"role": "user", "content": t})
-
-        logger.debug(f"model {self.modelname}")
+            new_text.append(self.convert_to_prompt(instructions,
+                                                   role="system"))
+        new_text.extend(self.convert_to_prompt(text))
 
         import mistralai
         starttime = time.time()
