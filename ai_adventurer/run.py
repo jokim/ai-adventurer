@@ -362,7 +362,7 @@ def main():
         )
 
     if args.list_nlp_models:
-        for m in nlp.models:
+        for m in nlp.nlp_models:
             print(m)
         return
 
