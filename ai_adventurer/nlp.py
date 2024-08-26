@@ -325,6 +325,7 @@ class GeminiNLPClient(OnlineNLPClient):
             contents=text,
         )
         logger.debug("Response time: %.3f", time.time() - starttime)
+        logger.debug("Token usage: %s", response.usage_metadata)
         try:
             answer = response.text
         except ValueError:
@@ -335,7 +336,6 @@ class GeminiNLPClient(OnlineNLPClient):
             logger.debug("Returning: '%r'", answer)
 
         logger.debug("Prompt response: %s", answer)
-        # TODO: log the token consumption
         return answer
 
     def convert_to_prompt(self, text, role='user'):
