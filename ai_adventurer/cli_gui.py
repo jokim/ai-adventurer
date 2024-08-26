@@ -433,7 +433,14 @@ class GameWindow(EditorWindow):
                 return self.title
 
         class Instruction(Section):
-            pass
+
+            instruct_text = 'INSTRUCT: '
+
+            def __init__(self, text):
+                text = text.strip()
+                if text.startswith(self.instruct_text):
+                    text = text[len(self.instruct_text):]
+                super().__init__(text)
 
         # First, identity the sections, like paragraphs and headers
         sections = []
@@ -453,6 +460,14 @@ class GameWindow(EditorWindow):
                     if linenumber == focus:
                         section.focus = True
                     sections.append(section)
+                elif row.strip().startswith('INSTRUCT:'):
+                    if past_text:
+                        sections.append(Paragraph(past_text))
+                        past_text = []
+                    section = Instruction(row)
+                    if linenumber == focus:
+                        section.focus = True
+                    sections.append(section)
                 else:
                     section = Section(row)
                     if linenumber == focus:
@@ -465,14 +480,14 @@ class GameWindow(EditorWindow):
         rows = []
         for section in sections:
             # Add an empty line between paragraphs (except the first)
-            if (isinstance(section, (Paragraph, Header))
+            if (isinstance(section, (Paragraph, Header, Instruction))
                     and rows
                     and rows[-1] != ""):
                 rows.append("")
             if isinstance(section, Header):
-                text = self.term.darkorange_on_black(str(section))
+                text = self.term.darkorange_on_black(f"{section}")
             elif isinstance(section, Instruction):
-                text = self.term.lightgray_on_black(str(section))
+                text = self.term.darkgray_on_black(f"I: {section}")
             elif isinstance(section, Paragraph):
                 text = ""
                 for s in section.text:

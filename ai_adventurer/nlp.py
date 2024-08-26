@@ -485,6 +485,10 @@ class NLPHandler(object):
         surprising subplots. Include dialog with the characters. Avoid
         repetition and summarisation. Use humour.
 
+        If a paragraph starts with "INSTRUCT:", it is not a part of the story,
+        but instructions from the user that you must follow when continuing the
+        story.
+
         """
 
     def __init__(self, modelname, secrets):
