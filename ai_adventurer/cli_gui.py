@@ -6,6 +6,7 @@ Making use of `blessed` to have a more fancy CLI.
 """
 
 import logging
+import re
 import subprocess
 import tempfile
 
@@ -359,12 +360,6 @@ class TableEditWindow(EditorWindow):
         self._print_footer_menu(message=message)
 
 
-def convert_gamelines_to_paragraphs(lines):
-    """Merge game lines into paragraphs."""
-    tmp = " ".join(lines)
-    return tuple(s.strip() for s in tmp.split("\n\n"))
-
-
 class GameWindow(EditorWindow):
 
     text_width = 120
@@ -387,54 +382,146 @@ class GameWindow(EditorWindow):
             return None
         return self.data.lines[elementid]
 
+    def gamelines_to_paragraphs(self, lines, focus, width=None):
+        """Convert the game lines into neater paragraphs, with formating.
+
+        @param lines: The game content
+        @param focus:
+            The line number that has focus and should be highlighted. Set to
+            None to disable.
+        @rtype list
+        @return:
+            A list with the lines that could be printed.
+
+        """
+        if not width:
+            width = self.text_width
+
+        lines = lines.copy()
+
+        class Section(object):
+            def __init__(self, text):
+                self.text = text
+                self.focus = False
+
+            def __str__(self):
+                return self.text
+
+        class Paragraph(Section):
+            def __init__(self, text):
+                if isinstance(text, str):
+                    text = [Section(text)]
+                self.text = text
+                self.focus = False
+
+            def __str__(self):
+                return " ".join(str(s) for s in self.text)
+
+        class Header(Section):
+            def __init__(self, title):
+                self.focus = False
+                header = re.match("^(#+) (.*)", title.strip())
+                if not header.group:
+                    logger.warn("Unhandled title: %r", title)
+                    self.level = None
+                    self.title = title
+                else:
+                    self.level = header.group(1)
+                    self.title = header.group(2)
+
+            def __str__(self):
+                return self.title
+
+        class Instruction(Section):
+            pass
+
+        # First, identity the sections, like paragraphs and headers
+        sections = []
+        past_text = []
+        for linenumber, chunk in enumerate(lines):
+            for row in chunk.splitlines():
+                # Empty row means a newline, which means a new paragraph:
+                if not row:
+                    if past_text:
+                        sections.append(Paragraph(past_text))
+                        past_text = []
+                elif row.strip().startswith('#'):
+                    if past_text:
+                        sections.append(Paragraph(past_text))
+                        past_text = []
+                    section = Header(row)
+                    if linenumber == focus:
+                        section.focus = True
+                    sections.append(section)
+                else:
+                    section = Section(row)
+                    if linenumber == focus:
+                        section.focus = True
+                    past_text.append(section)
+        if past_text:
+            sections.append(Paragraph(past_text))
+
+        # Then, print the sections out into the rows:
+        rows = []
+        for section in sections:
+            # Add an empty line between paragraphs (except the first)
+            if (isinstance(section, (Paragraph, Header))
+                    and rows
+                    and rows[-1] != ""):
+                rows.append("")
+            if isinstance(section, Header):
+                text = self.term.darkorange_on_black(str(section))
+            elif isinstance(section, Instruction):
+                text = self.term.lightgray_on_black(str(section))
+            elif isinstance(section, Paragraph):
+                text = ""
+                for s in section.text:
+                    txt = str(s)
+                    if text:
+                        txt = " " + txt
+                    if s.focus:
+                        text += self.term.standout(txt)
+                    else:
+                        text += txt
+            else:
+                text = str(section)
+
+            if section.focus:
+                text = self.term.standout(text)
+            rows.extend(self.term.wrap(text, width))
+        return rows
+
     def _print_gamedata(self):
-        """Fill the main content area with the last lines"""
+        """Fill main content with the story"""
         y_min = 1
         y_max = self.term.height - 3
         y_pos = y_max
 
         focus = self.focus
-        lines = self.data.lines
+        rawlines = self.data.lines
 
-        # lines = convert_gamelines_to_paragraphs(lines)
-
-        # Start at the bottom and work upwards
-        print(self.term.move_xy(0, y_pos), end="")
+        if len(rawlines) == 0:
+            print(self.term.gray("No content yet..."))
+            return
 
         # Focus defaults to -1, which is the last line
         if focus == -1:
-            focus = len(lines) - 1
+            focus = len(rawlines) - 1
         # The focus might have moved past the last line
-        if focus > len(lines) - 1:
-            focus = len(lines) - 1
+        if focus > len(rawlines) - 1:
+            focus = len(rawlines) - 1
 
-        # Walk backward, from the bottom, and stop when you reach y_min
-        # Let the active line be at the bottom
-        line_nr = focus
-        # But, if the active line is not the last, show one more:
-        if line_nr < len(lines) - 1:
-            line_nr = focus + 1
+        lines = self.gamelines_to_paragraphs(rawlines,
+                                             self.focus,
+                                             width=min(self.term.width,
+                                                       self.text_width))
+        # Cut top and bottom, to reach the focused part
 
-        if len(lines) == 0:
-            print(self.term.gray("No content yet..."))
-            y_pos -= 1
-        else:
-            while line_nr >= 0:
-                line = lines[line_nr]
-                rows = self.term.wrap(line, width=min(self.term.width - 10,
-                                                      self.text_width))
-                # Make sure blank rows are included
-                if not rows:
-                    rows.append("")
-                for row in reversed(rows):
-                    if line_nr == focus:
-                        print(self.term.standout, end="")
-                    print(row, end="")
-                    print(self.term.normal, end="")
-
-                    y_pos -= 1
-                    if y_pos < y_min:
-                        return
-                    print(self.term.move_xy(0, y_pos), end="")
-
-                line_nr -= 1
+        print(self.term.move_xy(0, y_min), end="")
+        # TODO: how to make sure that the focused part is in the view?
+        y_pos = y_min
+        for row in lines:
+            if y_pos > y_max:
+                break
+            print(row)
+            y_pos += 1
