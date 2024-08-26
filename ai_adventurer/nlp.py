@@ -477,12 +477,11 @@ class NLPHandler(object):
 
         Writing Guidelines: Use first person perspective and present tense,
         unless the story starts differently. Use writing techniques to bring
-        the world and characters to life. Use rich language, but use
-        variations. Vary what words you use. Be specific and to the point.
-        Focus on details that makes the story alive. Let the characters
-        develop, and bring out their motivations, relationships, thoughts and
-        complexity. Keep the story on track, but be creative and allow
-        surprising subplots. Include dialog with the characters. Avoid
+        the world and characters to life. Vary what phrases you use. Be
+        specific and to the point, and focus on the action in the story. Let
+        the characters develop, and bring out their motivations, relationships,
+        thoughts and complexity. Keep the story on track, but be creative and
+        allow surprising subplots. Include dialog with the characters. Avoid
         repetition and summarisation. Use humour.
 
         If a paragraph starts with "INSTRUCT:", it is not a part of the story,
