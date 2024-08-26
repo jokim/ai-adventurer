@@ -261,7 +261,7 @@ class OpenAINLPClient(OnlineNLPClient):
         # Reformat the prompt to follow OpenAIs specs:
         new_text = []
         if instructions:
-            new_text.append(self.convert_to_prompt(instructions,
+            new_text.extend(self.convert_to_prompt(instructions,
                                                    role='system'))
         new_text.extend(self.convert_to_prompt(text))
 
@@ -335,6 +335,7 @@ class GeminiNLPClient(OnlineNLPClient):
             logger.debug("Returning: '%r'", answer)
 
         logger.debug("Prompt response: %s", answer)
+        # TODO: log the token consumption
         return answer
 
     def convert_to_prompt(self, text, role='user'):
@@ -394,7 +395,7 @@ class MistralNLP(OnlineNLPClient):
         # Reformat the prompt to follow Mistrals specs:
         new_text = []
         if instructions:
-            new_text.append(self.convert_to_prompt(instructions,
+            new_text.extend(self.convert_to_prompt(instructions,
                                                    role="system"))
         new_text.extend(self.convert_to_prompt(text))
 
@@ -418,6 +419,7 @@ class MistralNLP(OnlineNLPClient):
             raise TimeoutException(e)
 
         logger.debug("Response time: %.3f", time.time() - starttime)
+        logger.debug("Token usage: %r", response.usage)
         answer = response.choices[0].message.content
         logger.debug("Prompt response: %s", answer)
         return answer
@@ -428,9 +430,10 @@ class MistralNLP(OnlineNLPClient):
         Mistral has support for a prefix variable too.
 
         """
-        super().convert_to_prompt(text, role)
+        text = super().convert_to_prompt(text, role)
         if prefix:
             raise Exception("Not implemented")
+        return text
 
 
 nlp_models = {
