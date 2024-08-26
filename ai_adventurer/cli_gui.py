@@ -492,6 +492,9 @@ class GameWindow(EditorWindow):
                 text = ""
                 for s in section.text:
                     txt = str(s)
+                    # Fix bold text:
+                    txt = re.sub(r"\*\*(.*?)\*\*", self.term.bold(r"\1"), txt)
+
                     if text:
                         txt = " " + txt
                     if s.focus:
