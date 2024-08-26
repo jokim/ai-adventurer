@@ -496,6 +496,7 @@ class GameWindow(EditorWindow):
         y_min = 1
         y_max = self.term.height - 3
         y_pos = y_max
+        height = y_max - y_min
 
         focus = self.focus
         rawlines = self.data.lines
@@ -505,17 +506,45 @@ class GameWindow(EditorWindow):
             return
 
         # Focus defaults to -1, which is the last line
-        if focus == -1:
+        if self.focus == -1:
             focus = len(rawlines) - 1
         # The focus might have moved past the last line
-        if focus > len(rawlines) - 1:
+        if self.focus > len(rawlines) - 1:
             focus = len(rawlines) - 1
 
         lines = self.gamelines_to_paragraphs(rawlines,
-                                             self.focus,
+                                             focus,
                                              width=min(self.term.width,
                                                        self.text_width))
-        # Cut top and bottom, to reach the focused part
+
+        # Cut from the top, to reach the focused part
+        # Might consider a new variable for scrolling, but a quick workaround
+        # for now... In case a section is too long for the screen.
+
+        if len(lines) > height:
+            # Special case: If at the bottom:
+            if self.focus == -1 or self.focus >= (len(rawlines) - 1):
+                cut = len(lines) - height
+                lines = lines[cut:]
+            else:
+                # First, find the line with focus
+                linematch = [None, None]
+                for i, line in enumerate(lines):
+                    if self.term.standout in line:
+                        linematch[0] = i
+                        break
+                for i, line in enumerate(reversed(lines)):
+                    if self.term.standout in line:
+                        linematch[1] = i
+                        break
+                # Now, cut around it
+                if linematch != [None, None]:
+                    cut = max(0, linematch[0] - height)
+                    if cut > 0:
+                        cut -= linematch[1] - linematch[0]
+                        if cut < 0:
+                            cut = 0
+                    lines = lines[cut:]
 
         print(self.term.move_xy(0, y_min), end="")
         # TODO: how to make sure that the focused part is in the view?
