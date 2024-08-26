@@ -34,7 +34,10 @@ def _get_default_config():
     return config
 
 
-def load_config(config_file, args=None):
+def load_config(config_file=None, args=None):
+    if config_file is None:
+        config_file = default_configfile
+
     config = _get_default_config()
     config.read(config_file)
 
@@ -64,8 +67,11 @@ def _get_default_secrets():
     return config
 
 
-def load_secrets(config_file):
+def load_secrets(config_file=None):
     """I like to have the secrets separated from the rest of the config."""
+    if config_file is None:
+        config_file = default_secretsfile
+
     config = _get_default_secrets()
     config.read(config_file)
 
