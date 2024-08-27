@@ -64,7 +64,8 @@ class GameController(object):
             "a": ("Add", self.add_line),
             "t": ("Title", self.edit_title),
             "s": ("Story", self.edit_story_details),
-            "i": ("Instruct", self.edit_instructions),
+            "i": ("Add instruction", self.add_instruction),
+            "I": ("Add instruction", self.edit_system_instructions),
             "KEY_ENTER": ("Next", self.next_line),
         }
 
@@ -197,6 +198,14 @@ class GameController(object):
             gamegui.set_focus(-1)
         return "New line added"
 
+    def add_instruction(self, game, gamegui, lineid, oldline):
+        """Write a new instruction"""
+        newline = self.gui.start_input_line("Add new instruction: ")
+        if newline:
+            game.add_lines(f"INSTRUCT: {newline}")
+            gamegui.set_focus(-1)
+        return "New line added"
+
     def edit_title(self, game, gamegui, lineid, oldline):
         new_title = self.gui.start_input_edit_text(game.title)
         if new_title:
@@ -205,7 +214,7 @@ class GameController(object):
         else:
             return "Title unchanged"
 
-    def edit_instructions(self, game, gamegui, lineid, oldline):
+    def edit_system_instructions(self, game, gamegui, lineid, oldline):
         new_instructions = self.gui.start_input_edit_text(
             game.instructions)
 
