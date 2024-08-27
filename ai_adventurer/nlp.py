@@ -622,4 +622,4 @@ class NLPHandler(object):
         prompt.append("\n---\n<THE-STORY>:\n")
         prompt.extend(game.lines)
         prompt.append("\n\n</THE-STORY>")
-        return self.prompt(prompt)
+        return self.prompt(prompt, instructions=game.instructions)
