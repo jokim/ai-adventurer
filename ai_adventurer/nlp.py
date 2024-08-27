@@ -400,29 +400,40 @@ class MistralNLP(OnlineNLPClient):
         new_text.extend(self.convert_to_prompt(text))
 
         import mistralai
-        starttime = time.time()
         try:
-            response = self.client.chat.complete(
-                model=self.modelname,
-                messages=new_text,
-                max_tokens=self.max_tokens,
-                timeout_ms=self.timeout_ms,
-                safe_prompt=False,
-                stream=False,
-            )
+            response = self._prompt(new_text)
         except mistralai.models.sdkerror.SDKError as e:
             if e.status_code == 401:
                 raise NotAuthenticatedError(e)
+            if e.status_code == 429:
+                # {"message":"Requests rate limit exceeded"}
+                time.sleep(2)
+                logger.debug("Requests rate limit exceeded, retrying...")
+                # Retry once. Maybe more?
+                response = self._prompt(new_text)
             logger.critical(e, exc_info=True)
             raise e
+        # TODO: check for limit exceptions
         except httpx.ReadTimeout as e:
             raise TimeoutException(e)
 
-        logger.debug("Response time: %.3f", time.time() - starttime)
         logger.debug("Token usage: %r", response.usage)
         answer = response.choices[0].message.content
         logger.debug("Prompt response: %s", answer)
         return answer
+
+    def _prompt(self, text):
+        starttime = time.time()
+        response = self.client.chat.complete(
+            model=self.modelname,
+            messages=text,
+            max_tokens=self.max_tokens,
+            timeout_ms=self.timeout_ms,
+            safe_prompt=False,
+            stream=False,
+        )
+        logger.debug("Response time: %.3f seconds", time.time() - starttime)
+        return response
 
     def convert_to_prompt(self, text, role='user', prefix=False):
         """Convert text or list with text to the NLP's formats.
