@@ -37,7 +37,7 @@ def cleanup_text(text):
     text = re.sub(r"\n{3,}", "\n\n", text)
     # Replace multiple spaces with a single space
     text = re.sub(r"[ \t\r\f\v]+", " ", text)
-    return text.strip()
+    return text
 
 
 def clean_text_for_saving(text):
