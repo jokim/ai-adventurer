@@ -623,3 +623,85 @@ class NLPHandler(object):
         prompt.extend(game.lines)
         prompt.append("\n\n</THE-STORY>")
         return self.prompt(prompt, instructions=game.instructions)
+
+
+def main():
+    import argparse
+    from ai_adventurer import config
+
+    parser = argparse.ArgumentParser(
+        description="Run the NLP client directly, for debugging"
+    )
+    parser.add_argument(
+        "-d",
+        "--debug",
+        action="store_true",
+        help="Log debug data to file, for development",
+    )
+    parser.add_argument(
+        "--config-file",
+        type=str,
+        metavar="FILENAME",
+        default=config.default_configfile,
+        help="Where the config is located. Default: %(default)s",
+    )
+    parser.add_argument(
+        "--secrets-file",
+        type=str,
+        metavar="FILENAME",
+        default=config.default_secretsfile,
+        help="Where the secrets are located. Default: %(default)s",
+    )
+    parser.add_argument(
+        "--nlp-model",
+        type=str,
+        metavar="MODEL",
+        help="Which AI NLP model to use",
+    )
+    parser.add_argument(
+        "--list-nlp-models",
+        action="store_true",
+        help="List available AI NLP models",
+    )
+
+    args = parser.parse_args()
+
+    if args.debug:
+        logging.basicConfig(
+            filename="logger.log", encoding="utf-8", level=logging.DEBUG
+        )
+    else:
+        logging.basicConfig(
+            filename="logger.log", encoding="utf-8", level=logging.WARNING
+        )
+
+    if args.list_nlp_models:
+        for m in nlp_models:
+            print(m)
+        return
+
+    configuration = config.load_config(args.config_file, args)
+    secrets = config.load_secrets(args.secrets_file)
+    modelname = configuration["DEFAULT"]["nlp_model"]
+
+    logger.debug("Starting NLP debug client")
+    nlp = NLPHandler(modelname, secrets=secrets)
+
+    def prompt(text, instructions=None):
+        print(nlp.prompt(text, instructions=instructions))
+
+    print(f"Using model: {modelname}\n")
+    print("Run:\nprompt('This is a prompt')\n")
+    print("or look at the nlp object (NLPHandler)\n")
+
+    import code
+    import readline
+    from rlcompleter import Completer
+    readline.parse_and_bind('tab: complete')
+    readline.set_completer(Completer(locals()).complete)
+    code.interact(local=locals())
+    logger.debug("Stopping NLP debug client")
+
+
+if __name__ == '__main__':
+    main()
