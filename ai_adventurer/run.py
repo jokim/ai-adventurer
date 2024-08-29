@@ -5,6 +5,7 @@ import logging
 import re
 
 from ai_adventurer import cli_gui
+from ai_adventurer import gui_urwid
 from ai_adventurer import config
 from ai_adventurer import db
 from ai_adventurer import nlp
@@ -55,7 +56,8 @@ class GameController(object):
     def __init__(self, config, secrets):
         self.config = config
         self.secrets = secrets
-        self.gui = cli_gui.GUI()
+        # self.gui = cli_gui.GUI()
+        self.gui = gui_urwid.GUI()
         self.db = db.Database()
         self.game_actions = {
             "r": ("Retry", self.retry_line),
@@ -71,8 +73,12 @@ class GameController(object):
 
     def run(self):
         self.nlp = self.get_nlp_handler()
-        with self.gui.activate():
-            self.start_mainmenu_loop()
+        # TODO: get back the fullscreen and restore, when I understand urwid
+        # better
+        # with self.gui.activate():
+        #     self.start_mainmenu_loop()
+        self.gui.activate()
+        self.start_mainmenu_loop()
 
     def start_mainmenu_loop(self):
         choices = {
