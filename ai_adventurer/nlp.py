@@ -108,7 +108,7 @@ class LocalNLPClient(NLPClient):
         end = time.time()
 
         logger.debug("Returned answer: %s", output)
-        logger.debug("Time elapsed: %.2f", end - start)
+        logger.debug("Time elapsed: %.2f seconds", end - start)
         return output
 
 
@@ -147,7 +147,7 @@ class HuggingfaceNLPClient(NLPClient):
         end = time.time()
 
         logger.debug("Returned answer: %s", output)
-        logger.debug("Time elapsed: %.2f", end - start)
+        logger.debug("Time elapsed: %.2f seconds", end - start)
         return output
 
 
