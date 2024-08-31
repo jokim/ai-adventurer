@@ -4,7 +4,6 @@ import argparse
 import logging
 import re
 
-from ai_adventurer import cli_gui
 from ai_adventurer import gui_urwid
 from ai_adventurer import config
 from ai_adventurer import db
@@ -50,81 +49,75 @@ def clean_text_for_saving(text):
     return "\n".join(ret)
 
 
-class GameController(object):
+class Controller(object):
     """The controller of the game"""
 
     def __init__(self, config, secrets):
         self.config = config
         self.secrets = secrets
-        # self.gui = cli_gui.GUI()
-        self.gui = gui_urwid.GUI()
         self.db = db.Database()
-        self.game_actions = {
-            "r": ("Retry", self.retry_line),
-            "e": ("Edit", self.edit_active_line),
-            "d": ("Del", self.delete_active_line),
-            "a": ("Add", self.add_line),
-            "t": ("Title", self.edit_title),
-            "s": ("Story", self.edit_story_details),
-            "i": ("Add instruction", self.add_instruction),
-            "I": ("Add instruction", self.edit_system_instructions),
-            "KEY_ENTER": ("Next", self.next_line),
-        }
+        self.gui = gui_urwid.GUI()
 
     def run(self):
         self.nlp = self.get_nlp_handler()
-        # TODO: get back the fullscreen and restore, when I understand urwid
-        # better
-        # with self.gui.activate():
-        #     self.start_mainmenu_loop()
+        self.start_mainmenu()
         self.gui.activate()
-        self.start_mainmenu_loop()
 
-    def start_mainmenu_loop(self):
+    def start_mainmenu(self, widget=None):
+        """Call the GUI to present the main menu"""
         choices = {
             "n": ("New game", self.start_new_game),
             "l": ("Load game", self.start_game_lister),
             "c": ("Write config file (config.ini and secrets.ini)",
                   self.edit_config),
+            "q": ("Quit", self.gui.quit),
         }
-        menuwindow = cli_gui.MenuWindow(gui=self.gui, choices=choices)
-        while True:
-            try:
-                choice = menuwindow.activate()
-            except cli_gui.UserQuitting:
-                return
-            else:
-                choice[1]()
+        self.gui.load_mainmenu(choices)
 
-    def start_game_lister(self):
+    def start_game_lister(self, widget=None):
         choices = {
             'd': ('Delete', self.delete_game),
             'c': ('Copy', self.copy_game),
             'n': ('New', self.start_new_game),
+            'q': ('Quit to main menu', self.start_mainmenu),
             'KEY_ENTER': ('Load', self.load_game),
         }
 
-        message = None
-        while True:
-            games = []
-            for game in self.db.get_games():
-                games.append((game['gameid'], game['title'], 'TODO length'))
-            table_viewer = cli_gui.TableEditWindow(self.gui, choices=choices,
-                                                   data=games)
-            try:
-                choice, lineid, game = table_viewer.activate(message=message)
-                message = None
-            except cli_gui.UserQuitting:
-                return
-            else:
-                message = choice[1](game)
+        games = []
+        for game in self.db.get_games():
+            games.append({
+                'gameid': game['gameid'],
+                'title': game['title'],
+                'length': 'TODO',
+                'callback': self.load_game,
+            })
+        self.gui.load_gamelister(games, choices)
+        # message = None
+        # while True:
+        #     games = []
+        #     for game in self.db.get_games():
+        #         games.append((game['gameid'], game['title'], 'TODO length'))
+        #     table_viewer = cli_gui.TableEditWindow(self.gui, choices=choices,
+        #                                            data=games)
+        #     try:
+        #         choice, lineid, game = table_viewer.activate(message=message)
+        #         message = None
+        #     except cli_gui.UserQuitting:
+        #         return
+        #     else:
+        #         message = choice[1](game)
 
-    def load_game(self, selected):
-        self.game = Game(db=self.db, nlp=self.nlp,
-                         gameid=selected[0])
-        gamegui = cli_gui.GameWindow(gui=self.gui, choices=self.game_actions,
-                                     game=self.game)
-        self.start_game_input_loop(self.game, gamegui, message="Game loaded")
+    def load_game(self, widget, user_data):
+        """Load a given game
+
+        widget and user_data is given by urwids callback regime.
+
+        """
+        logger.debug(f"Called load_game: {widget!r}, user_Data: {user_data!r}")
+        self.gamec = GameController(db=self.db, nlp=self.nlp, gui=self.gui,
+                                    controller=self,
+                                    gameid=user_data['gameid'])
+        self.gamec.load_game()
 
     def delete_game(self, gamedata):
         if self.gui.start_input_confirm(
@@ -141,47 +134,9 @@ class GameController(object):
         config.save_secrets(self.secrets)
 
     def start_new_game(self, _=None):
-        self.game = Game(db=self.db, nlp=self.nlp)
-        self.game.set_instructions(
-            clean_text_for_saving(self.nlp.default_instructions))
-
-        concept = cleanup_text(
-            self.gui.start_input_line("A concept for the story (leave blank "
-                                      + "to get a random from the AI)? "))
-        if not concept:
-            concept = self.nlp.prompt_for_concept()
-        self.game.set_details(concept)
-        title = self.nlp.prompt_for_title(concept)
-        self.game.set_title(title)
-        self.game.add_lines(self.nlp.prompt_for_introduction(self.game))
-        gamegui = cli_gui.GameWindow(gui=self.gui, choices=self.game_actions,
-                                     game=self.game)
-        self.start_game_input_loop(self.game, gamegui,
-                                   message="New game started")
-
-    def start_game_input_loop(self, game, gamegui, message=None):
-        while True:
-            try:
-                choice, elementid, element = gamegui.activate(message=message)
-            except cli_gui.UserQuitting:
-                return
-            else:
-                message = choice[1](game, gamegui, elementid, element)
-
-    def next_line(self, game, gamegui, lineid, oldline):
-        """Generate new text"""
-        # TODO: move this to gamegui somehow...
-        self.gui.send_message("Generating more text...")
-        game.generate_next_lines()
-        gamegui.set_focus(-1)
-        return "New text generated"
-
-    def retry_line(self, game, gamegui, lineid, active_line):
-        """Regenerate chosen line"""
-        self.gui.send_message("Retry selected text")
-        # TODO: handle the given line too, but goes to last line anyway
-        game.retry_active_line(lineid)
-        return "New text generated, if it was the last..."
+        self.gamec = GameController(db=self.db, nlp=self.nlp, gui=self.gui,
+                                    controller=self)
+        self.gamec.start_new_game()
 
     def edit_active_line(self, game, gamegui, lineid, oldline):
         """Edit chosen line/response"""
@@ -212,35 +167,6 @@ class GameController(object):
             gamegui.set_focus(-1)
         return "New line added"
 
-    def edit_title(self, game, gamegui, lineid, oldline):
-        new_title = self.gui.start_input_edit_text(game.title)
-        if new_title:
-            game.set_title(new_title)
-            return "Title updated"
-        else:
-            return "Title unchanged"
-
-    def edit_system_instructions(self, game, gamegui, lineid, oldline):
-        new_instructions = self.gui.start_input_edit_text(
-            game.instructions)
-
-        if not self.nlp.remove_internal_comments(
-                new_instructions.strip()).strip():
-            new_instructions = clean_text_for_saving(
-                self.nlp.default_instructions)
-
-        game.set_instructions(new_instructions)
-        return "Instructions updated"
-
-    def edit_story_details(self, game, gamegui, lineid, oldline):
-        new_details = self.gui.start_input_edit_text(game.details)
-
-        if not self.nlp.remove_internal_comments(new_details.strip()).strip():
-            new_details = clean_text_for_saving(default_details)
-
-        game.set_details(new_details)
-        return "Story summary updated"
-
     def get_nlp_handler(self):
         modelname = self.config["DEFAULT"]["nlp_model"]
         try:
@@ -257,9 +183,111 @@ class GameController(object):
             return nlp.NLPHandler(modelname, secrets=self.secrets)
 
 
-# TODO: Move this to its own file - game.py?
+# TODO: Move rest to its own file - game.py?
+class GameController(object):
+    """The controller of one game/story"""
+
+    def __init__(self, db, nlp, gui, controller, gameid=None):
+        self.db = db
+        self.nlp = nlp
+        self.gui = gui
+        self.controller = controller
+
+        self.game_actions = {
+            "r": ("Retry", self.retry_line),
+            # "e": ("Edit", self.edit_active_line),
+            # "d": ("Del", self.delete_active_line),
+            # "a": ("Add", self.add_line),
+            "t": ("Title", self.edit_title),
+            "s": ("Story", self.edit_story_details),
+            # "i": ("Add instruction", self.add_instruction),
+            "I": ("Add instruction", self.edit_system_instructions),
+            "q": ("Quit and back to mainmenu", self.quit_game),
+            "enter": ("Next", self.next_line),
+        }
+        self.game = Game(db=self.db, nlp=self.nlp, gameid=gameid)
+
+    def quit_game(self, widget=None):
+        self.controller.start_mainmenu()
+
+    def start_new_game(self):
+        self.game.set_instructions(
+            clean_text_for_saving(self.nlp.default_instructions))
+
+        # TODO: get back the input functionality, to get data from the user
+        concept = None
+        # concept = cleanup_text(
+        #     self.gui.start_input_line("A concept for the story (leave blank "
+        #                               + "to get a random from the AI)? "))
+        if not concept:
+            concept = self.nlp.prompt_for_concept()
+        self.game.set_details(concept)
+        title = self.nlp.prompt_for_title(concept)
+        self.game.set_title(title)
+        self.game.add_lines(self.nlp.prompt_for_introduction(self.game))
+
+        # TODO: remove when done mocking!
+        for i in range(30):
+            self.game.add_lines(str(i) + " - " +
+                                self.nlp.prompt_for_introduction(self.game))
+            self.game.add_lines("\n\n")
+
+        self.gui.load_game(self.game, self.game_actions)
+
+    def load_game(self):
+        self.gui.load_game(self.game, self.game_actions)
+
+    def next_line(self, widget):
+        """Generate new text"""
+        self.gui.send_message("Generating more text...")
+        self.game.generate_next_lines()
+        self.gui.story_box.load_text()
+        # TODO: move focus to hthe new, last
+        # self.gui.set_focus(-1)
+        self.gui.send_message("New text generated")
+
+    def retry_line(self, widget):  # lineid, active_line):
+        """Regenerate chosen line"""
+        self.gui.send_message("Retry selected text")
+        # TODO: handle the given line too, but goes to last line anyway
+        self.game.retry_active_line(None)  # lineid)
+
+        self.gui.story_box.load_text()
+        self.gui.send_message("New text generated, if it was the last...")
+
+    def edit_title(self, widget):  # game, gamegui, lineid, oldline):
+        new_title = self.gui.start_input_edit_text(self.game.title)
+        if new_title:
+            self.game.set_title(new_title)
+            self.gui.set_header(self.game.title)
+            self.gui.send_message("Title updated")
+        else:
+            self.gui.send_message("Title unchanged")
+
+    def edit_story_details(self, widget):
+        new_details = self.gui.start_input_edit_text(self.game.details)
+
+        if not self.nlp.remove_internal_comments(new_details.strip()).strip():
+            new_details = clean_text_for_saving(default_details)
+
+        self.game.set_details(new_details)
+        self.gui.send_message("Story summary updated")
+
+    def edit_system_instructions(self, widget):
+        new_instructions = self.gui.start_input_edit_text(
+            self.game.instructions)
+
+        if not self.nlp.remove_internal_comments(
+                new_instructions.strip()).strip():
+            new_instructions = clean_text_for_saving(
+                self.nlp.default_instructions)
+
+        self.game.set_instructions(new_instructions)
+        self.gui.send_message("Instructions updated")
+
+
 class Game(object):
-    """The game itself"""
+    """The game modeller"""
 
     def __init__(self, db, nlp, gameid=None):
         self.db = db
@@ -385,7 +413,7 @@ def main():
     secrets = config.load_secrets(args.secrets_file)
 
     logger.debug("Starting game")
-    game = GameController(configuration, secrets)
+    game = Controller(configuration, secrets)
     game.run()
     logger.debug("Stopping game")
 
