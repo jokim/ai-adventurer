@@ -180,7 +180,7 @@ class GUI(object):
         # TODO: sometimes the screen gets weird, not drawn correctly, when
         # returning from the editor (vim at least). Why? Redrawing doesn't seem
         # to work...
-        time.sleep(0.01)
+        time.sleep(0.5)
         self.loop.draw_screen()
         return new_text
 
@@ -266,28 +266,28 @@ class GameLister(urwid.ListBox):
         for game in games:
             button = urwid.Button(game['title'], on_press=game['callback'],
                                   user_data=game)
+            button.gamedata = game
             gamelist.append(urwid.AttrMap(button, None, focus_map="reversed"))
         super().__init__(body=gamelist)
 
-    def keypress(self, size: 'tuple[int, int]',
-                 key: 'str') -> 'str | None':
+    def keypress(self, size, key):
         logger.debug(f"In GameLister keypress, with key: {key!r}")
         if key in self.choices:
             logger.debug("Found it!")
             # TODO: add some context with it?
-            self.choices[key][1](self)
+            self.choices[key][1](self, focused=self.focus)
             return
         elif key in self.internal_choices:
             logger.debug("Found it!")
             # TODO: add some context with it?
-            self.internal_choices[key][1]()
+            self.internal_choices[key][1](focused=self.focus)
             return
         else:
             logger.debug(f"Unhandled key: {key!r}")
         return super().keypress(size, key)
 
-    def move_up(self):
+    def move_up(self, focused):
         self.set_focus(max(0, self.focus_position - 1))
 
-    def move_down(self):
+    def move_down(self, focused):
         self.set_focus(self.focus_position + 1)

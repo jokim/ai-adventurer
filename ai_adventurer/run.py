@@ -125,9 +125,11 @@ class Controller(object):
             self.db.delete_game(gamedata[0])
             return "Game deleted"
 
-    def copy_game(self, gamedata):
-        self.db.copy_game(gamedata[0])
-        return "Game copied"
+    def copy_game(self, widget, focused):
+        if self.db.copy_game(focused.original_widget.gamedata["gameid"]):
+            self.gui.send_message("Game copied")
+        else:
+            self.gui.send_message("Failed to copy")
 
     def edit_config(self):
         config.save_config(self.config)
@@ -183,7 +185,6 @@ class Controller(object):
             return nlp.NLPHandler(modelname, secrets=self.secrets)
 
 
-# TODO: Move rest to its own file - game.py?
 class GameController(object):
     """The controller of one game/story"""
 
