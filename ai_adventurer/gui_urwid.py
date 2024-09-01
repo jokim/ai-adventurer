@@ -8,6 +8,7 @@ https://urwid.org/
 """
 
 import logging
+import re
 import subprocess
 import tempfile
 import time
@@ -81,6 +82,8 @@ class GUI(object):
         ("story", "white", "dark blue", "", "#fff", "#000"),
         ("reversed", "black,bold", "white", "", "#000,bold", "#fff"),
         ("question", "white,bold", "dark gray", "", "#fff,bold", "#000"),
+        ("chapter", "black,bold", "dark blue", "", "#000,bold", "#f90"),
+        ("instruction", "light gray", "black", "", "#bbb", "#222"),
         # ("streak", "black", "dark red"),
         # ("bg", "white", "dark blue", "", "#fff", "#000"),
     ]
@@ -236,7 +239,7 @@ class StoryBox(urwid.Scrollable):
         }
         if game:
             self.game = game
-        self.content = ShowPopup(urwid.Text(""), title="Available keys")
+        self.content = ShowPopup(urwid.Pile([]), title="Available keys")
         super().__init__(widget=self.content,
                          force_forward_keypress=force_forward_keypress)
 
@@ -244,12 +247,10 @@ class StoryBox(urwid.Scrollable):
                  key: 'str') -> 'str | None':
         logger.debug(f"In StoryBox keypress, with key: {key!r}")
         if key in self.choices:
-            logger.debug("Found it!")
             # TODO: add some context with it?
             self.choices[key][1](self)
             return
         elif key in self.internal_choices:
-            logger.debug("Found it!")
             # TODO: add some context with it?
             self.internal_choices[key][1]()
             return
@@ -265,7 +266,9 @@ class StoryBox(urwid.Scrollable):
 
     def load_text(self):
         """Load in the games story"""
-        self.content.base_widget.set_text(" ".join(self.game.lines))
+        self.content.original_widget = urwid.Pile(
+                [urwid.Text(v) for v in
+                 self.gamelines_to_paragraphs(self.game.lines, 0)])
 
     def open_help_popup(self):
         """View a popup with the key shortcuts"""
@@ -278,6 +281,121 @@ class StoryBox(urwid.Scrollable):
         self.content.set_popup_content(urwid.Pile([urwid.Text(v) for v in
                                                    sorted(values)]))
         self.content.open_pop_up()
+
+    def gamelines_to_paragraphs(self, parts, focus):
+        """Convert the game parts into neater paragraphs, with formating.
+
+        @param parts: The game content
+        @param focus:
+            The line number that has focus and should be highlighted. Set to
+            None to disable.
+        @rtype list
+        @return:
+            A list with the lines that could be printed.
+
+        """
+        parts = parts.copy()
+
+        # TODO: refactor this!
+
+        class Section(object):
+            def __init__(self, text):
+                self.text = text
+                self.focus = False
+
+            def __str__(self):
+                return self.text
+
+        class Paragraph(Section):
+            def __init__(self, text):
+                if isinstance(text, str):
+                    text = [Section(text)]
+                self.text = text
+                self.focus = False
+
+            def __str__(self):
+                return " ".join(str(s) for s in self.text)
+
+        class Header(Section):
+            def __init__(self, title):
+                self.focus = False
+                header = re.match("^(#+) (.*)", title.strip())
+                if not header.group:
+                    logger.warn("Unhandled title: %r", title)
+                    self.level = None
+                    self.title = title
+                else:
+                    self.level = header.group(1)
+                    self.title = header.group(2)
+
+            def __str__(self):
+                return self.title
+
+        class Instruction(Section):
+
+            instruct_text = 'INSTRUCT: '
+
+            def __init__(self, text):
+                text = text.strip()
+                if text.startswith(self.instruct_text):
+                    text = text[len(self.instruct_text):]
+                super().__init__(text)
+
+        # First, identity the sections, like paragraphs and headers
+        sections = []
+        past_text = []
+        for linenumber, chunk in enumerate(parts):
+            for row in chunk.splitlines():
+                # Empty row means a newline, which means a new paragraph:
+                if not row:
+                    if past_text:
+                        sections.append(Paragraph(past_text))
+                        past_text = []
+                elif row.strip().startswith('#'):
+                    if past_text:
+                        sections.append(Paragraph(past_text))
+                        past_text = []
+                    section = Header(row)
+                    if linenumber == focus:
+                        section.focus = True
+                    sections.append(section)
+                elif row.strip().startswith('INSTRUCT:'):
+                    if past_text:
+                        sections.append(Paragraph(past_text))
+                        past_text = []
+                    section = Instruction(row)
+                    if linenumber == focus:
+                        section.focus = True
+                    sections.append(section)
+                else:
+                    section = Section(row)
+                    if linenumber == focus:
+                        section.focus = True
+                    past_text.append(section)
+        if past_text:
+            sections.append(Paragraph(past_text))
+
+        # Then, print the sections out into the rows:
+        rows = []
+        for section in sections:
+            # Add an empty line between paragraphs (except the first)
+            if (isinstance(section, (Paragraph, Header, Instruction))
+                    and rows
+                    and rows[-1] != ""):
+                rows.append("")
+            if isinstance(section, Header):
+                rows.append(("chapter", str(section)))
+            elif isinstance(section, Instruction):
+                rows.append(("instruction", "I: " + str(section)))
+            elif isinstance(section, Paragraph):
+                rows.append(str(section))
+            else:
+                rows.append(str(section))
+
+            # if section.focus:
+            #     text = ("in_focus", str(text))
+            # rows.extend(str(text))
+        return rows
 
 
 class GameLister(urwid.ListBox):
