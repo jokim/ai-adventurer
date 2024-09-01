@@ -229,15 +229,16 @@ class StoryBox(urwid.Scrollable):
     """The box that handles the story itself."""
 
     def __init__(self, widget=None, force_forward_keypress=False, game=None):
-        self.story_space = urwid.Text("")
-        super().__init__(widget=self.story_space,
-                         force_forward_keypress=force_forward_keypress)
         self.internal_choices = {
             'j': ('Move down', self.move_pos_down),
             'k': ('Move up', self.move_pos_up),
+            '?': ('Show help', self.open_help_popup),
         }
         if game:
             self.game = game
+        self.content = ShowPopup(urwid.Text(""), title="Available keys")
+        super().__init__(widget=self.content,
+                         force_forward_keypress=force_forward_keypress)
 
     def keypress(self, size: 'tuple[int, int]',
                  key: 'str') -> 'str | None':
@@ -257,14 +258,25 @@ class StoryBox(urwid.Scrollable):
         return super().keypress(size, key)
 
     def move_pos_up(self):
-        self.set_scrollpos(self.get_scrollpos() - 10)
+        self.set_scrollpos(self.get_scrollpos() - 1)
 
     def move_pos_down(self):
-        self.set_scrollpos(self.get_scrollpos() + 10)
+        self.set_scrollpos(self.get_scrollpos() + 1)
 
     def load_text(self):
         """Load in the games story"""
-        self.story_space.set_text(" ".join(self.game.lines))
+        self.content.base_widget.set_text(" ".join(self.game.lines))
+
+    def open_help_popup(self):
+        """View a popup with the key shortcuts"""
+        values = []
+        for key, option in self.choices.items():
+            values.append(urwid.Text(f"{key}  - {option[0]}"))
+        for key, option in self.internal_choices.items():
+            values.append(urwid.Text(f"{key}  - {option[0]}"))
+
+        self.content.set_popup_content(urwid.Pile(values))
+        self.content.open_pop_up()
 
 
 class GameLister(urwid.ListBox):
@@ -307,6 +319,41 @@ class GameLister(urwid.ListBox):
         self.set_focus(self.focus_position + 1)
 
 
+class ShowPopup(urwid.PopUpLauncher):
+    """A simple popup to show some text and quit"""
+
+    def __init__(self, original_widget, title=None, popup_content=None):
+        super().__init__(original_widget)
+        self.title = title
+        self.confirm_button = urwid.Button(
+            "Ok", on_press=lambda _: self.close_pop_up())
+        if popup_content:
+            self.set_popup_content(popup_content)
+        else:
+            self.popup = urwid.LineBox(self.confirm_button, title=self.title)
+
+    def set_popup_content(self, widget):
+        """Set or change the content of the popup.
+
+        The LineBox and ok Button is always included.
+
+        """
+        self.popup = urwid.LineBox(urwid.Pile([widget, self.confirm_button]),
+                                   title=self.title)
+
+    def create_pop_up(self):
+        return self.popup
+
+    def get_pop_up_parameters(self):
+        # TODO: fix this, crashes at the wrong sizes!
+        width, height = self.popup.pack()
+        logger.debug(f"got width {width} and height {height}")
+        return {'left': 2, 'top': 2,
+                'overlay_width': 'pack',
+                'overlay_height': 'pack',
+                }
+
+
 class ConfirmPopupLauncher(urwid.PopUpLauncher):
     """A confirmation popup"""
 
@@ -334,9 +381,7 @@ class ConfirmPopupLauncher(urwid.PopUpLauncher):
 
     def get_pop_up_parameters(self):
         logger.debug("Popuplauncher called - get_pop_up_parameters")
-        # TODO: get from the widget!
-        return {'left': 2, 'top': 2, 'overlay_width': 40, 'overlay_height': 10}
-
-
-class ConfirmPopup(urwid.PopUpTarget):
-    pass
+        width, height = self.popup.pack()
+        return {'left': 2, 'top': 2,
+                'overlay_width': width,
+                'overlay_height': height}
