@@ -43,7 +43,8 @@ class GUI(object):
         )
         self.loop = urwid.MainLoop(story_body,
                                    self.palette,
-                                   unhandled_input=self.unhandled_input)
+                                   unhandled_input=self.unhandled_input,
+                                   pop_ups=True)
         self.loop.screen.set_terminal_properties(colors=256)
 
     def activate(self):
@@ -210,6 +211,19 @@ class GUI(object):
         """Add a message to the user"""
         self.footer_text.set_text(text)
 
+    def ask_confirm(self, question="Are you sure?", callback=None,
+                    user_data=None):
+        """Ask the user to confirm something.
+
+        If the user confirms, the callback is called. Otherwise the popup is
+        removed and it's back to the previous screen.
+
+        """
+        launch = ConfirmPopupLauncher(self.loop.widget, question=question,
+                                      callback=callback, user_data=user_data)
+        self.loop.widget = launch
+        launch.open_pop_up()
+
 
 class StoryBox(urwid.Scrollable):
     """The box that handles the story itself."""
@@ -291,3 +305,38 @@ class GameLister(urwid.ListBox):
 
     def move_down(self, focused):
         self.set_focus(self.focus_position + 1)
+
+
+class ConfirmPopupLauncher(urwid.PopUpLauncher):
+    """A confirmation popup"""
+
+    def __init__(self, original_widget, question, callback, user_data):
+        super().__init__(original_widget)
+
+        def confirmer(widget):
+            logger.debug(f"Confirmed delete: {widget}")
+            self.close_pop_up()
+            callback(self, user_data)
+
+        confirm_button = urwid.Button("Confirm", on_press=confirmer)
+
+        self.popup = urwid.LineBox(
+            urwid.Pile([
+                urwid.Text(question),
+                urwid.Divider(),
+                confirm_button,
+                urwid.Button("Cancel", on_press=lambda _: self.close_pop_up()),
+            ])
+        )
+
+    def create_pop_up(self):
+        return self.popup
+
+    def get_pop_up_parameters(self):
+        logger.debug("Popuplauncher called - get_pop_up_parameters")
+        # TODO: get from the widget!
+        return {'left': 2, 'top': 2, 'overlay_width': 40, 'overlay_height': 10}
+
+
+class ConfirmPopup(urwid.PopUpTarget):
+    pass

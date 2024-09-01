@@ -63,7 +63,7 @@ class Controller(object):
         self.start_mainmenu()
         self.gui.activate()
 
-    def start_mainmenu(self, widget=None):
+    def start_mainmenu(self, widget=None, focused=None):
         """Call the GUI to present the main menu"""
         choices = {
             "n": ("New game", self.start_new_game),
@@ -80,7 +80,6 @@ class Controller(object):
             'c': ('Copy', self.copy_game),
             'n': ('New', self.start_new_game),
             'q': ('Quit to main menu', self.start_mainmenu),
-            'KEY_ENTER': ('Load', self.load_game),
         }
 
         games = []
@@ -92,22 +91,8 @@ class Controller(object):
                 'callback': self.load_game,
             })
         self.gui.load_gamelister(games, choices)
-        # message = None
-        # while True:
-        #     games = []
-        #     for game in self.db.get_games():
-        #         games.append((game['gameid'], game['title'], 'TODO length'))
-        #     table_viewer = cli_gui.TableEditWindow(self.gui, choices=choices,
-        #                                            data=games)
-        #     try:
-        #         choice, lineid, game = table_viewer.activate(message=message)
-        #         message = None
-        #     except cli_gui.UserQuitting:
-        #         return
-        #     else:
-        #         message = choice[1](game)
 
-    def load_game(self, widget, user_data):
+    def load_game(self, widget, user_data, focused=None):
         """Load a given game
 
         widget and user_data is given by urwids callback regime.
@@ -119,19 +104,32 @@ class Controller(object):
                                     gameid=user_data['gameid'])
         self.gamec.load_game()
 
-    def delete_game(self, gamedata):
-        if self.gui.start_input_confirm(
-                f"Delete game {gamedata[0]} - '{gamedata[1]}'?"):
-            self.db.delete_game(gamedata[0])
-            return "Game deleted"
+    def delete_game(self, widget, focused):
+        gameid = focused.base_widget.gamedata["gameid"]
+        title = focused.base_widget.gamedata["title"]
+
+        self.gui.ask_confirm(question=f"Delete game {gameid} - '{title}'?",
+                             callback=self.delete_game_confirmed,
+                             user_data=gameid)
+
+    def delete_game_confirmed(self, widget, user_data):
+        gameid = user_data
+        logger.info(f"Deleting game {gameid}")
+        self.db.delete_game(gameid)
+        self.gui.send_message(f"Game {gameid} deleted")
+        # Reload screen, so the deleted game is gone
+        self.start_game_lister()
 
     def copy_game(self, widget, focused):
-        if self.db.copy_game(focused.original_widget.gamedata["gameid"]):
+        gameid = focused.base_widget.gamedata["gameid"]
+        logger.info(f"Copying game {gameid}")
+        if self.db.copy_game(gameid):
             self.gui.send_message("Game copied")
         else:
             self.gui.send_message("Failed to copy")
 
     def edit_config(self):
+        logger.info("Saving config")
         config.save_config(self.config)
         config.save_secrets(self.secrets)
 
