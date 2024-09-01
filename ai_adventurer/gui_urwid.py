@@ -271,9 +271,9 @@ class StoryBox(urwid.Scrollable):
         """View a popup with the key shortcuts"""
         values = []
         for key, data in self.choices.items():
-            values.append(f"{key} - {data[0]}")
+            values.append(f"{key:10} - {data[0]}")
         for key, data in self.internal_choices.items():
-            values.append(f"{key} - {data[0]}")
+            values.append(f"{key:10} - {data[0]}")
 
         self.content.set_popup_content(urwid.Pile([urwid.Text(v) for v in
                                                    sorted(values)]))
