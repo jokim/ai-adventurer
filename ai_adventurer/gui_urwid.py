@@ -339,7 +339,8 @@ class ShowPopup(urwid.PopUpLauncher):
         The LineBox and ok Button is always included.
 
         """
-        self.popup = urwid.LineBox(urwid.Pile([widget, self.confirm_button]),
+        self.popup = urwid.LineBox(urwid.Pile([widget, urwid.Divider(),
+                                               self.confirm_button]),
                                    title=self.title)
 
     def create_pop_up(self):
