@@ -255,15 +255,12 @@ class StoryBox(urwid.Scrollable):
                  key: 'str') -> 'str | None':
         logger.debug(f"In StoryBox keypress, with key: {key!r}")
         if key in self.choices:
-            # TODO: add some context with it?
             self.choices[key][1](self)
             return
-        elif key in self.internal_choices:
-            # TODO: add some context with it?
+        if key in self.internal_choices:
             self.internal_choices[key][1]()
             return
-        else:
-            logger.debug(f"Unhandled key: {key!r}")
+        logger.debug(f"Unhandled key: {key!r}")
         return super().keypress(size, key)
 
     def move_selection_up(self):
@@ -330,8 +327,6 @@ class StoryBox(urwid.Scrollable):
             A list with the lines that could be printed.
 
         """
-        parts = parts.copy()
-
         # TODO: refactor this!
 
         class Section(object):
