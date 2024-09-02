@@ -261,19 +261,33 @@ class StoryBox(urwid.Scrollable):
         return super().keypress(size, key)
 
     def move_pos_up(self):
-        # self.set_scrollpos(self.get_scrollpos() - 1)
         self.selected_part -= 1
         if self.selected_part < 0:
             self.selected_part = 0
         else:
+            # TODO: move the scrollpos to make the selected text in view
+            # self.set_scrollpos(self.get_scrollpos() - 1)
             self.load_text()
 
     def move_pos_down(self):
-        # self.set_scrollpos(self.get_scrollpos() + 1)
         self.selected_part += 1
         if self.selected_part > len(self.game.lines):
             self.selected_part = len(self.game.lines)
+        # TODO: move the scrollpos to make the selected text in view
+        # self.set_scrollpos(self.get_scrollpos() + 1)
         self.load_text()
+
+    def set_selection(self, lineid):
+        """Set the selection to a certain part"""
+        if lineid > len(self.game.lines) or lineid <= -1:
+            lineid = len(self.game.lines) - 1
+
+        old_id = self.selected_part
+        self.selected_part = lineid
+        if old_id != lineid:
+            # TODO: move the scrollpos to make the selected text in view
+            # self.set_scrollpos(self.get_scrollpos() + 1)
+            self.load_text()
 
     def load_text(self):
         """Load in the games story"""

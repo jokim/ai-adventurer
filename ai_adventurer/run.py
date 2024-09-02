@@ -103,6 +103,7 @@ class Controller(object):
                                     controller=self,
                                     gameid=user_data['gameid'])
         self.gamec.load_game()
+        self.gui.send_message("Game loaded. Remember, push ? for help.")
 
     def delete_game(self, widget, focused):
         gameid = focused.base_widget.gamedata["gameid"]
@@ -212,9 +213,7 @@ class GameController(object):
         """Generate new text"""
         self.gui.send_message("Generating more text...")
         self.game.generate_next_lines()
-        self.gui.story_box.load_text()
-        # TODO: move focus to hthe new, last
-        # self.gui.set_focus(-1)
+        self.gui.story_box.set_selection(-1)
         self.gui.send_message("New text generated")
 
     def retry_line(self, widget):  # lineid, active_line):
@@ -275,15 +274,18 @@ class GameController(object):
     def edit_active_line(self, widget):  # lineid, oldline):
         """Edit chosen line/response"""
         # TODO: get the active line!!!
+        selected = self.gui.story_box.selected_part
+        oldline = self.game.lines[selected]
         newline = self.gui.start_input_edit_text(oldline)
         newline = cleanup_text(newline)
-        self.game.change_line(lineid, newline)
+        self.game.change_line(selected, newline)
         self.gui.send_message("Last line updated")
 
     def delete_active_line(self, widget):  # lineid, oldline):
         """Delete chosen line/response"""
-        self.game.delete_line(lineid)
-        self.gui.shift_focus_up()
+        selected = self.gui.story_box.selected_part
+        self.game.delete_line(selected)
+        self.gui.story_box.move_pos_up()
         self.gui.send_message("Line deleted")
 
 
