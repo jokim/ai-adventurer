@@ -154,13 +154,6 @@ class GUI(object):
             def regenerate_flame(self):
                 self.set_text(self.get_flame())
 
-            def pack(self, size=None, focus=False):
-                return (7, 4)
-
-            def render(self, *args, **kwargs):
-                self.regenerate_flame()
-                return super().render(*args, **kwargs)
-
             flames = (
                 (
                     r"   )   ",
