@@ -197,13 +197,6 @@ class GameController(object):
         title = self.nlp.prompt_for_title(concept)
         self.game.set_title(title)
         self.game.add_lines(self.nlp.prompt_for_introduction(self.game))
-
-        # TODO: remove when done mocking!
-        for i in range(30):
-            self.game.add_lines(str(i) + " - " +
-                                self.nlp.prompt_for_introduction(self.game))
-            self.game.add_lines("\n\n")
-
         self.gui.load_game(self.game, self.game_actions)
 
     def load_game(self):
