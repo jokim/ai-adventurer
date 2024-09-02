@@ -423,8 +423,12 @@ class StoryBox(urwid.Scrollable):
                 tmp = []
                 for txt in section.text:
                     if txt.selected:
+                        if tmp:
+                            tmp.append(("selected", " "))
                         tmp.append(("selected", str(txt)))
                     else:
+                        if tmp:
+                            tmp.append(("story", " "))
                         tmp.append(("story", str(txt)))
                 rows.append(tmp)
             else:
