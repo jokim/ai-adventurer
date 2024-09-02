@@ -105,12 +105,12 @@ class GUI(object):
         self.set_header(self.game.title)
 
         self.story_box.choices = choices
-        self.story_box.load_game(game)
         story_body = urwid.Frame(
             header=urwid.AttrMap(self.header_text, "header"),
             body=urwid.AttrMap(self.story_box, "story"),
             footer=urwid.AttrMap(self.footer_text, "footer"),
         )
+        self.story_box.load_game(game)
         self.loop.widget = story_body
 
     def load_mainmenu(self, choices):
@@ -249,7 +249,8 @@ class StoryBox(urwid.Scrollable):
         """Load a new game, resetting old settings"""
         self.game = game
         self.set_selection(-1)
-        self.set_scrollpos(self.load_text())
+        self.load_text()
+        self.set_scrollpos(-1)
 
     def keypress(self, size: 'tuple[int, int]',
                  key: 'str') -> 'str | None':
@@ -270,7 +271,7 @@ class StoryBox(urwid.Scrollable):
             self.selected_part = 0
 
         if old_id != self.selected_part:
-            self.set_scrollpos(self.load_text())
+            self.load_text()
 
     def move_selection_down(self):
         old_id = self.selected_part
@@ -279,7 +280,7 @@ class StoryBox(urwid.Scrollable):
             self.selected_part = len(self.game.lines) - 1
 
         if old_id != self.selected_part:
-            self.set_scrollpos(self.load_text())
+            self.load_text()
 
     def set_selection(self, lineid):
         """Set the selection to a certain part"""
@@ -289,7 +290,11 @@ class StoryBox(urwid.Scrollable):
         old_id = self.selected_part
         self.selected_part = lineid
         if old_id != lineid:
-            self.set_scrollpos(self.load_text())
+            self.load_text()
+            if lineid == len(self.game.lines) - 1:
+                self.set_scrollpos(-1)
+            elif lineid == 0:
+                self.set_scrollpos(0)
 
     def load_text(self):
         """Load in the games story"""
