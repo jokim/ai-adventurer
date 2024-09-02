@@ -8,9 +8,11 @@ https://urwid.org/
 """
 
 import logging
+import random
 import re
 import subprocess
 import tempfile
+import threading
 import time
 from collections.abc import Iterable
 
@@ -137,18 +139,103 @@ class GUI(object):
             return urwid.ListBox(urwid.SimpleFocusListWalker(body))
 
         main = urwid.Padding(mainmenu(("header", "AI adventurer"), choices),
-                             left=0, right=0)
+                             left=1, right=1)
+
+        class Flame(urwid.Text):
+            """Simulating a flame"""
+
+            def __init__(self):
+                super().__init__(self.get_flame())
+
+            def get_flame(self):
+                """Get a random flame"""
+                return "\n".join(random.choice(self.flames))
+
+            def regenerate_flame(self):
+                self.set_text(self.get_flame())
+
+            def pack(self, size=None, focus=False):
+                return (7, 4)
+
+            def render(self, *args, **kwargs):
+                self.regenerate_flame()
+                return super().render(*args, **kwargs)
+
+            flames = (
+                (
+                    r"   )   ",
+                    r"  ) \  ",
+                    r" / ) ( ",
+                    r" \(_)/ ",
+                ),
+                (
+                    r"   (   ",
+                    r"  / (  ",
+                    r" ( / \ ",
+                    r" \(.)/ ",
+                ),
+                (
+                    r"  (    ",
+                    r"  )\   ",
+                    r" (\ \  ",
+                    r" \(.)  ",
+                ),
+                (
+                    r"       ",
+                    r"   /\  ",
+                    r"  (  \ ",
+                    r"  \.)/ ",
+                ),
+                (
+                    r"    )  ",
+                    r"   /(  ",
+                    r"  (\ \ ",
+                    r"  (.)/ ",
+                ),
+                (
+                    r"  /\   ",
+                    r" ( ^\  ",
+                    r" |/ \( ",
+                    r" \(-)/ ",
+                ),
+                (
+                    r"  /^\  ",
+                    r" ( _ ) ",
+                    r" (/ \( ",
+                    r" \(-)/ ",
+                ),
+                (
+                    r"   ^   ",
+                    r"  / \  ",
+                    r" ( \ ) ",
+                    r" \(-)/ ",
+                ),
+            )
+
+        flamewidgets = (Flame(), Flame())
+
+        def regenerate_flame():
+            while isinstance(self.body, urwid.Overlay):
+                time.sleep(0.3)
+                for f in flamewidgets:
+                    f.regenerate_flame()
+                self.loop.draw_screen()
+            logger.debug("Puh, done...")
+
+        background = urwid.Filler(urwid.Columns(flamewidgets, dividechars=3),
+                                  valign=("relative", 98))
         self.body = urwid.Overlay(main,
-                                  urwid.SolidFill("\N{MEDIUM SHADE}"),
+                                  background,
                                   align=urwid.CENTER,
-                                  width=(urwid.RELATIVE, 60),
+                                  width=(urwid.RELATIVE, 50),
                                   valign=urwid.MIDDLE,
-                                  height=(urwid.RELATIVE, 60),
-                                  min_width=20,
+                                  height=(urwid.RELATIVE, 40),
+                                  min_width=10,
                                   min_height=5,
                                   )
-        # TODO: add some adventure ornaments - a moving flame, maybe?
         self.loop.widget = self.body
+        self.flame_thread = threading.Thread(target=regenerate_flame)
+        self.flame_thread.start()
 
     def load_gamelister(self, games, choices):
         """Load the game overview"""
