@@ -232,8 +232,10 @@ class StoryBox(urwid.Scrollable):
 
     def __init__(self, widget=None, force_forward_keypress=False, game=None):
         self.internal_choices = {
-            'j': ('Move down', self.move_selection_down),
-            'k': ('Move up', self.move_selection_up),
+            'j': ('Move selection one down', self.move_selection_down),
+            'k': ('Move selection one up', self.move_selection_up),
+            'home': ('Move selection to start', lambda: self.set_selection(0)),
+            'end': ('Move selection to last', lambda: self.set_selection(-1)),
             '?': ('Show help', self.open_help_popup),
         }
         if game:
@@ -247,7 +249,7 @@ class StoryBox(urwid.Scrollable):
         """Load a new game, resetting old settings"""
         self.game = game
         self.set_selection(-1)
-        self.story_box.load_text()
+        self.load_text()
 
     def keypress(self, size: 'tuple[int, int]',
                  key: 'str') -> 'str | None':
