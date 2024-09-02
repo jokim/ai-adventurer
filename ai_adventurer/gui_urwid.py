@@ -105,15 +105,13 @@ class GUI(object):
         self.set_header(self.game.title)
 
         self.story_box.choices = choices
-        self.story_box.game = game
-        self.story_box.load_text()
+        self.story_box.load_game(game)
         story_body = urwid.Frame(
             header=urwid.AttrMap(self.header_text, "header"),
             body=urwid.AttrMap(self.story_box, "story"),
             footer=urwid.AttrMap(self.footer_text, "footer"),
         )
         self.loop.widget = story_body
-        # TODO: add listener for the keypresses for this?
 
     def load_mainmenu(self, choices):
         """Set up and present the main menu.
@@ -234,8 +232,8 @@ class StoryBox(urwid.Scrollable):
 
     def __init__(self, widget=None, force_forward_keypress=False, game=None):
         self.internal_choices = {
-            'j': ('Move down', self.move_pos_down),
-            'k': ('Move up', self.move_pos_up),
+            'j': ('Move down', self.move_selection_down),
+            'k': ('Move up', self.move_selection_up),
             '?': ('Show help', self.open_help_popup),
         }
         if game:
@@ -244,6 +242,12 @@ class StoryBox(urwid.Scrollable):
         self.selected_part = 0
         super().__init__(widget=self.content,
                          force_forward_keypress=force_forward_keypress)
+
+    def load_game(self, game):
+        """Load a new game, resetting old settings"""
+        self.game = game
+        self.set_selection(-1)
+        self.story_box.load_text()
 
     def keypress(self, size: 'tuple[int, int]',
                  key: 'str') -> 'str | None':
@@ -260,22 +264,27 @@ class StoryBox(urwid.Scrollable):
             logger.debug(f"Unhandled key: {key!r}")
         return super().keypress(size, key)
 
-    def move_pos_up(self):
+    def move_selection_up(self):
+        old_id = self.selected_part
         self.selected_part -= 1
         if self.selected_part < 0:
             self.selected_part = 0
-        else:
+
+        if old_id != self.selected_part:
             # TODO: move the scrollpos to make the selected text in view
-            # self.set_scrollpos(self.get_scrollpos() - 1)
+            # self.set_scrollpos(
             self.load_text()
 
-    def move_pos_down(self):
+    def move_selection_down(self):
+        old_id = self.selected_part
         self.selected_part += 1
-        if self.selected_part > len(self.game.lines):
-            self.selected_part = len(self.game.lines)
-        # TODO: move the scrollpos to make the selected text in view
-        # self.set_scrollpos(self.get_scrollpos() + 1)
-        self.load_text()
+        if self.selected_part >= len(self.game.lines):
+            self.selected_part = len(self.game.lines) - 1
+
+        if old_id != self.selected_part:
+            # TODO: move the scrollpos to make the selected text in view
+            # self.set_scrollpos(
+            self.load_text()
 
     def set_selection(self, lineid):
         """Set the selection to a certain part"""
@@ -286,7 +295,7 @@ class StoryBox(urwid.Scrollable):
         self.selected_part = lineid
         if old_id != lineid:
             # TODO: move the scrollpos to make the selected text in view
-            # self.set_scrollpos(self.get_scrollpos() + 1)
+            # self.set_scrollpos(
             self.load_text()
 
     def load_text(self):

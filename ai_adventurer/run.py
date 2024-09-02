@@ -216,32 +216,31 @@ class GameController(object):
         self.gui.story_box.set_selection(-1)
         self.gui.send_message("New text generated")
 
-    def retry_line(self, widget):  # lineid, active_line):
+    def retry_line(self, widget):
         """Regenerate chosen line"""
         self.gui.send_message("Retry selected text")
-        # TODO: handle the given line too, but goes to last line anyway
-        self.game.retry_active_line(None)  # lineid)
-
+        selected = self.gui.story_box.selected_part
+        self.game.retry_active_line(selected)
         self.gui.story_box.load_text()
-        self.gui.send_message("New text generated, if it was the last...")
+        self.gui.send_message("Part regenerated, if it was the last…")
 
-    def add_line(self, widget):  # lineid, oldline):
+    def add_line(self, widget):
         """Write a new line/response"""
         newline = self.gui.start_input_edit_text("")
         if newline:
             self.game.add_lines(newline)
-            self.gamegui.set_focus(-1)
-        self.gui.send_message("New line added")
+            self.gui.story_box.set_selection(-1)
+            self.gui.send_message("New line added")
 
-    def add_instruction(self, widget):  # lineid, oldline):
+    def add_instruction(self, widget):
         """Write a new instruction"""
         newline = self.gui.start_input_edit_text("")
         if newline:
             self.game.add_lines(f"INSTRUCT: {newline}")
-            self.gui.set_focus(-1)
-        self.gui.send_message("New line added")
+            self.gui.story_box.set_selection(-1)
+            self.gui.send_message("New line added")
 
-    def edit_title(self, widget):  # game, gamegui, lineid, oldline):
+    def edit_title(self, widget):
         new_title = self.gui.start_input_edit_text(self.game.title)
         if new_title:
             self.game.set_title(new_title)
@@ -269,11 +268,10 @@ class GameController(object):
                 self.nlp.default_instructions)
 
         self.game.set_instructions(new_instructions)
-        self.gui.send_message("Instructions updated")
+        self.gui.send_message("AI instructions updated")
 
-    def edit_active_line(self, widget):  # lineid, oldline):
+    def edit_active_line(self, widget):
         """Edit chosen line/response"""
-        # TODO: get the active line!!!
         selected = self.gui.story_box.selected_part
         oldline = self.game.lines[selected]
         newline = self.gui.start_input_edit_text(oldline)
@@ -281,11 +279,11 @@ class GameController(object):
         self.game.change_line(selected, newline)
         self.gui.send_message("Last line updated")
 
-    def delete_active_line(self, widget):  # lineid, oldline):
+    def delete_active_line(self, widget):
         """Delete chosen line/response"""
         selected = self.gui.story_box.selected_part
         self.game.delete_line(selected)
-        self.gui.story_box.move_pos_up()
+        self.gui.story_box.move_selection_up()
         self.gui.send_message("Line deleted")
 
 
