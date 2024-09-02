@@ -80,6 +80,7 @@ class GUI(object):
         ("header", "black,bold", "dark blue", "", "#000,bold", "#f90"),
         ("footer", "black,bold", "dark blue", "", "#000,bold", "#f90"),
         ("story", "white", "dark blue", "", "#fff", "#000"),
+        ("selected", "black", "white", "", "#000", "#fff"),
         ("reversed", "black,bold", "white", "", "#000,bold", "#fff"),
         ("question", "white,bold", "dark gray", "", "#fff,bold", "#000"),
         ("chapter", "black,bold", "dark blue", "", "#000,bold", "#f90"),
@@ -240,6 +241,7 @@ class StoryBox(urwid.Scrollable):
         if game:
             self.game = game
         self.content = ShowPopup(urwid.Pile([]), title="Available keys")
+        self.selected_part = 0
         super().__init__(widget=self.content,
                          force_forward_keypress=force_forward_keypress)
 
@@ -259,16 +261,26 @@ class StoryBox(urwid.Scrollable):
         return super().keypress(size, key)
 
     def move_pos_up(self):
-        self.set_scrollpos(self.get_scrollpos() - 1)
+        # self.set_scrollpos(self.get_scrollpos() - 1)
+        self.selected_part -= 1
+        if self.selected_part < 0:
+            self.selected_part = 0
+        else:
+            self.load_text()
 
     def move_pos_down(self):
-        self.set_scrollpos(self.get_scrollpos() + 1)
+        # self.set_scrollpos(self.get_scrollpos() + 1)
+        self.selected_part += 1
+        if self.selected_part > len(self.game.lines):
+            self.selected_part = len(self.game.lines)
+        self.load_text()
 
     def load_text(self):
         """Load in the games story"""
         self.content.original_widget = urwid.Pile(
                 [urwid.Text(v) for v in
-                 self.gamelines_to_paragraphs(self.game.lines, 0)])
+                 self.gamelines_to_paragraphs(self.game.lines,
+                                              self.selected_part)])
 
     def open_help_popup(self):
         """View a popup with the key shortcuts"""
@@ -282,13 +294,12 @@ class StoryBox(urwid.Scrollable):
                                                    sorted(values)]))
         self.content.open_pop_up()
 
-    def gamelines_to_paragraphs(self, parts, focus):
+    def gamelines_to_paragraphs(self, parts, selected):
         """Convert the game parts into neater paragraphs, with formating.
 
         @param parts: The game content
-        @param focus:
-            The line number that has focus and should be highlighted. Set to
-            None to disable.
+        @param selected:
+            The number of the part that is selected and should be highlighted.
         @rtype list
         @return:
             A list with the lines that could be printed.
@@ -301,7 +312,7 @@ class StoryBox(urwid.Scrollable):
         class Section(object):
             def __init__(self, text):
                 self.text = text
-                self.focus = False
+                self.selected = False
 
             def __str__(self):
                 return self.text
@@ -311,14 +322,14 @@ class StoryBox(urwid.Scrollable):
                 if isinstance(text, str):
                     text = [Section(text)]
                 self.text = text
-                self.focus = False
+                self.selected = False
 
             def __str__(self):
                 return " ".join(str(s) for s in self.text)
 
         class Header(Section):
             def __init__(self, title):
-                self.focus = False
+                self.selected = False
                 header = re.match("^(#+) (.*)", title.strip())
                 if not header.group:
                     logger.warn("Unhandled title: %r", title)
@@ -356,21 +367,21 @@ class StoryBox(urwid.Scrollable):
                         sections.append(Paragraph(past_text))
                         past_text = []
                     section = Header(row)
-                    if linenumber == focus:
-                        section.focus = True
+                    if linenumber == selected:
+                        section.selected = True
                     sections.append(section)
                 elif row.strip().startswith('INSTRUCT:'):
                     if past_text:
                         sections.append(Paragraph(past_text))
                         past_text = []
                     section = Instruction(row)
-                    if linenumber == focus:
-                        section.focus = True
+                    if linenumber == selected:
+                        section.selected = True
                     sections.append(section)
                 else:
                     section = Section(row)
-                    if linenumber == focus:
-                        section.focus = True
+                    if linenumber == selected:
+                        section.selected = True
                     past_text.append(section)
         if past_text:
             sections.append(Paragraph(past_text))
@@ -383,18 +394,35 @@ class StoryBox(urwid.Scrollable):
                     and rows
                     and rows[-1] != ""):
                 rows.append("")
-            if isinstance(section, Header):
-                rows.append(("chapter", str(section)))
-            elif isinstance(section, Instruction):
-                rows.append(("instruction", "I: " + str(section)))
-            elif isinstance(section, Paragraph):
-                rows.append(str(section))
-            else:
-                rows.append(str(section))
 
-            # if section.focus:
-            #     text = ("in_focus", str(text))
-            # rows.extend(str(text))
+            if isinstance(section, Header):
+                if section.selected:
+                    rows.append(("selected", str(section)))
+                else:
+                    rows.append(("chapter", str(section)))
+            elif isinstance(section, Instruction):
+                if section.selected:
+                    rows.append(("selected", "I: " + str(section)))
+                else:
+                    rows.append(("instruction", "I: " + str(section)))
+            elif isinstance(section, Paragraph):
+                tmp = []
+                for txt in section.text:
+                    if txt.selected:
+                        tmp.append(("selected", str(txt)))
+                    else:
+                        tmp.append(("story", str(txt)))
+                rows.append(tmp)
+            else:
+                if section.selected:
+                    rows.append(("selected", str(section)))
+                else:
+                    rows.append(("story", str(section)))
+
+            # if section.selected:
+            #     tmp = ("selected", tmp[1])
+            #     logger.debug(f"Selected part: {tmp}")
+
         return rows
 
 
