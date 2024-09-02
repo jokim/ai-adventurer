@@ -249,7 +249,7 @@ class StoryBox(urwid.Scrollable):
         """Load a new game, resetting old settings"""
         self.game = game
         self.set_selection(-1)
-        self.load_text()
+        self.set_scrollpos(self.load_text())
 
     def keypress(self, size: 'tuple[int, int]',
                  key: 'str') -> 'str | None':
@@ -270,9 +270,7 @@ class StoryBox(urwid.Scrollable):
             self.selected_part = 0
 
         if old_id != self.selected_part:
-            # TODO: move the scrollpos to make the selected text in view
-            # self.set_scrollpos(
-            self.load_text()
+            self.set_scrollpos(self.load_text())
 
     def move_selection_down(self):
         old_id = self.selected_part
@@ -281,9 +279,7 @@ class StoryBox(urwid.Scrollable):
             self.selected_part = len(self.game.lines) - 1
 
         if old_id != self.selected_part:
-            # TODO: move the scrollpos to make the selected text in view
-            # self.set_scrollpos(
-            self.load_text()
+            self.set_scrollpos(self.load_text())
 
     def set_selection(self, lineid):
         """Set the selection to a certain part"""
@@ -293,16 +289,17 @@ class StoryBox(urwid.Scrollable):
         old_id = self.selected_part
         self.selected_part = lineid
         if old_id != lineid:
-            # TODO: move the scrollpos to make the selected text in view
-            # self.set_scrollpos(
-            self.load_text()
+            self.set_scrollpos(self.load_text())
 
     def load_text(self):
         """Load in the games story"""
-        self.content.original_widget = urwid.Pile(
-                [urwid.Text(v) for v in
-                 self.gamelines_to_paragraphs(self.game.lines,
-                                              self.selected_part)])
+        widgets = []
+        rows, select_start = self.gamelines_to_paragraphs(self.game.lines,
+                                                          self.selected_part)
+        for row in rows:
+            widgets.append(urwid.Text(row))
+        self.content.original_widget = urwid.Pile(widgets)
+        return select_start
 
     def open_help_popup(self):
         """View a popup with the key shortcuts"""
@@ -322,9 +319,11 @@ class StoryBox(urwid.Scrollable):
         @param parts: The game content
         @param selected:
             The number of the part that is selected and should be highlighted.
-        @rtype list
+        @rtype tuple
         @return:
-            A list with the lines that could be printed.
+            A tuple where the first element is a list with the lines that could
+            be printed, and the second is the first *row* that contains the
+            selected part.
 
         """
         # TODO: refactor this!
@@ -408,6 +407,8 @@ class StoryBox(urwid.Scrollable):
 
         # Then, print the sections out into the rows:
         rows = []
+        first_row_selected = -1
+
         for section in sections:
             # Add an empty line between paragraphs (except the first)
             if (isinstance(section, (Paragraph, Header, Instruction))
@@ -417,11 +418,15 @@ class StoryBox(urwid.Scrollable):
 
             if isinstance(section, Header):
                 if section.selected:
+                    if first_row_selected == -1:
+                        first_row_selected = len(rows)
                     rows.append(("selected", str(section)))
                 else:
                     rows.append(("chapter", str(section)))
             elif isinstance(section, Instruction):
                 if section.selected:
+                    if first_row_selected == -1:
+                        first_row_selected = len(rows)
                     rows.append(("selected", "I: " + str(section)))
                 else:
                     rows.append(("instruction", "I: " + str(section)))
@@ -429,6 +434,8 @@ class StoryBox(urwid.Scrollable):
                 tmp = []
                 for txt in section.text:
                     if txt.selected:
+                        if first_row_selected == -1:
+                            first_row_selected = len(rows)
                         if tmp:
                             tmp.append(("selected", " "))
                         tmp.append(("selected", str(txt)))
@@ -439,15 +446,13 @@ class StoryBox(urwid.Scrollable):
                 rows.append(tmp)
             else:
                 if section.selected:
+                    if first_row_selected == -1:
+                        first_row_selected = len(rows)
                     rows.append(("selected", str(section)))
                 else:
                     rows.append(("story", str(section)))
 
-            # if section.selected:
-            #     tmp = ("selected", tmp[1])
-            #     logger.debug(f"Selected part: {tmp}")
-
-        return rows
+        return rows, first_row_selected
 
 
 class GameLister(urwid.ListBox):
