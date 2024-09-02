@@ -87,6 +87,7 @@ class GUI(object):
         ("question", "white,bold", "dark gray", "", "#fff,bold", "#000"),
         ("chapter", "black,bold", "dark blue", "", "#000,bold", "#f90"),
         ("instruction", "light gray", "black", "", "#bbb", "#222"),
+        ("flame", "light red", "", "", "#f90", ""),
         # ("streak", "black", "dark red"),
         # ("bg", "white", "dark blue", "", "#fff", "#000"),
     ]
@@ -149,7 +150,7 @@ class GUI(object):
 
             def get_flame(self):
                 """Get a random flame"""
-                return "\n".join(random.choice(self.flames))
+                return ("flame", "\n".join(random.choice(self.flames)))
 
             def regenerate_flame(self):
                 self.set_text(self.get_flame())
@@ -205,15 +206,19 @@ class GUI(object):
                 ),
             )
 
-        flamewidgets = (Flame(), Flame())
+        flamewidgets = (
+            ('weight', 10, Flame()),
+            ('weight', 80, urwid.Padding(urwid.Text(""))),
+            ('weight', 10, Flame()),
+        )
 
         def regenerate_flame():
-            while isinstance(self.body, urwid.Overlay):
-                time.sleep(0.3)
+            for i in range(10):
+                time.sleep(0.5)
                 for f in flamewidgets:
-                    f.regenerate_flame()
+                    if isinstance(f[2], Flame):
+                        f[2].regenerate_flame()
                 self.loop.draw_screen()
-            logger.debug("Puh, done...")
 
         background = urwid.Filler(urwid.Columns(flamewidgets, dividechars=3),
                                   valign=("relative", 98))
