@@ -12,9 +12,8 @@ import random
 import re
 import subprocess
 import tempfile
-import threading
+# import threading
 import time
-from collections.abc import Iterable
 
 import urwid
 
@@ -52,7 +51,6 @@ class GUI(object):
 
     def activate(self):
         """Activate fullscreen and start the GUI"""
-        # self.load_mainmenu()
         self.loop.run()
 
     def quit(self, *args):
@@ -80,6 +78,7 @@ class GUI(object):
     # 6. background for 88 and 256 colors (optional)
     palette = [
         ("header", "black,bold", "dark blue", "", "#000,bold", "#f90"),
+        ("title",  "black,bold", "dark blue", "", "#000,bold", "#f90"),
         ("footer", "black,bold", "dark blue", "", "#000,bold", "#f90"),
         ("story", "white", "dark blue", "", "#fff", "#000"),
         ("selected", "black", "white", "", "#000", "#fff"),
@@ -123,23 +122,7 @@ class GUI(object):
         options.
 
         """
-        def menu_button(caption, callback) -> urwid.AttrMap:
-            button = urwid.Button(caption, on_press=callback)
-            # TODO: add keypress too somewhere?
-            return urwid.AttrMap(button, None, focus_map="reversed")
-
-        def mainmenu(title, choices: Iterable[urwid.Widget]) -> urwid.ListBox:
-            body = [urwid.AttrMap(urwid.Padding(urwid.Text(title),
-                                                width=("relative", 100)),
-                                  "header"),
-                    urwid.Divider()]
-            for key, choice in choices.items():
-                button = menu_button(choice[0], choice[1])
-                # TODO: Add key to keypress handler
-                body.append(button)
-            return urwid.ListBox(urwid.SimpleFocusListWalker(body))
-
-        main = urwid.Padding(mainmenu(("header", "AI adventurer"), choices),
+        main = urwid.Padding(Menu("AI adventurer", choices),
                              left=1, right=1)
 
         class Flame(urwid.Text):
@@ -212,13 +195,16 @@ class GUI(object):
             ('weight', 10, Flame()),
         )
 
-        def regenerate_flame():
-            for i in range(10):
-                time.sleep(0.5)
-                for f in flamewidgets:
-                    if isinstance(f[2], Flame):
-                        f[2].regenerate_flame()
-                self.loop.draw_screen()
+        def regenerate_flames(*args, **kwargs):
+            for f in flamewidgets:
+                if isinstance(f[2], Flame):
+                    f[2].regenerate_flame()
+            self.loop.draw_screen()
+
+        def regenerate_flame_loop(stop_event):
+            while not stop_event.is_set():
+                time.sleep(0.1 + random.random() * 2)  # 0.1 - 2.1 seconds
+                regenerate_flames()
 
         background = urwid.Filler(urwid.Columns(flamewidgets, dividechars=3),
                                   valign=("relative", 98))
@@ -232,8 +218,16 @@ class GUI(object):
                                   min_height=5,
                                   )
         self.loop.widget = self.body
-        self.flame_thread = threading.Thread(target=regenerate_flame)
-        self.flame_thread.start()
+
+        delay = 0.1
+        for i in range(1000):
+            self.loop.set_alarm_in(delay, regenerate_flames)
+            delay += (random.random() * 0.5)
+
+        # stop_event = threading.Event()
+        # self.flame_thread = threading.Thread(target=regenerate_flame,
+        #                                      args=(stop_event,))
+        # self.flame_thread.start()
 
     def load_gamelister(self, games, choices):
         """Load the game overview"""
@@ -310,6 +304,56 @@ class GUI(object):
                                       callback=callback, user_data=user_data)
         self.loop.widget = launch
         launch.open_pop_up()
+
+
+class Menu(urwid.ListBox):
+    """A menu, with easier choices"""
+
+    def __init__(self, title, choices):
+        """Init
+
+        @param title: The title of the menu
+
+        @param choices:
+            The items in the menu. Should be a dict in the format:
+
+                'keyboard-key': ("Name of element", callback-func),
+
+        """
+        self.choices = choices
+        self.internal_choices = {
+            'j': self.move_down,
+            'k': self.move_up,
+        }
+        title = urwid.Padding(urwid.Text(title), width=("relative", 100))
+        self.body = [urwid.AttrMap(title, "title")]
+        # TODO: add divider?
+        # urwid.Divider()]
+        for key, choice in choices.items():
+            button = self._create_menu_button(f"{key:4} - {choice[0]}",
+                                              choice[1])
+            self.body.append(button)
+        super().__init__(urwid.SimpleFocusListWalker(self.body))
+
+    def _create_menu_button(self, caption, callback) -> urwid.AttrMap:
+        button = urwid.Button(caption, on_press=callback)
+        # TODO: add keypress too somewhere?
+        return urwid.AttrMap(button, None, focus_map="reversed")
+
+    def keypress(self, size, key):
+        if key in self.choices:
+            self.choices[key][1](self)
+            return
+        if key in self.internal_choices:
+            self.internal_choices[key]()
+            return
+        return super().keypress(size, key)
+
+    def move_up(self):
+        self.set_focus(max(1, self.focus_position - 1))
+
+    def move_down(self):
+        self.set_focus(min(self.focus_position + 1, len(self) - 1))
 
 
 class StoryBox(urwid.Scrollable):
@@ -563,26 +607,19 @@ class GameLister(urwid.ListBox):
         super().__init__(body=gamelist)
 
     def keypress(self, size, key):
-        logger.debug(f"In GameLister keypress, with key: {key!r}")
         if key in self.choices:
-            logger.debug("Found it!")
-            # TODO: add some context with it?
             self.choices[key][1](self, focused=self.focus)
             return
         elif key in self.internal_choices:
-            logger.debug("Found it!")
-            # TODO: add some context with it?
             self.internal_choices[key][1](focused=self.focus)
             return
-        else:
-            logger.debug(f"Unhandled key: {key!r}")
         return super().keypress(size, key)
 
     def move_up(self, focused):
-        self.set_focus(max(0, self.focus_position - 1))
+        self.set_focus(max(1, self.focus_position - 1))
 
     def move_down(self, focused):
-        self.set_focus(self.focus_position + 1)
+        self.set_focus(min(self.focus_position + 1, len(self) - 1))
 
 
 class ShowPopup(urwid.PopUpLauncher):
