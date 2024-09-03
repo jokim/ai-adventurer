@@ -122,7 +122,7 @@ class GUI(object):
         options.
 
         """
-
+        self.set_header()
         main = urwid.Padding(MainMenu(choices=choices), left=0, right=0)
 
         class Flame(urwid.Text):
