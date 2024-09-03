@@ -129,13 +129,13 @@ class Controller(object):
         else:
             self.gui.send_message("Failed to copy")
 
-    def edit_config(self):
+    def edit_config(self, focused):
         logger.info("Saving config")
         config.save_config(self.config)
         config.save_secrets(self.secrets)
         self.gui.send_message("Config saved")
 
-    def start_new_game(self, _=None):
+    def start_new_game(self, _=None, focused=None):
         self.gamec = GameController(db=self.db, nlp=self.nlp, gui=self.gui,
                                     controller=self)
         self.gamec.start_new_game()
