@@ -74,7 +74,7 @@ class Controller(object):
         }
         self.gui.load_mainmenu(choices)
 
-    def start_game_lister(self, widget=None):
+    def start_game_lister(self, widget=None, focused=None):
         choices = {
             'd': ('Delete', self.delete_game),
             'c': ('Copy', self.copy_game),

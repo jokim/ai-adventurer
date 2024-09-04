@@ -114,7 +114,8 @@ class GUI(object):
         """Change the viewer to the game window"""
         self.event_reset.set()
         self.set_header(game.title)
-        self.set_body(StoryBox(game=game, choices=choices))
+        self.story_box = StoryBox(game=game, choices=choices)
+        self.set_body(self.story_box)
 
     def load_mainmenu(self, choices):
         """Set up and present the main menu.
@@ -310,11 +311,11 @@ class StoryBox(urwid.Scrollable):
         }
         self.game = game
         self.choices = choices
-        self.selected_part = 0
+        self.selected_part = -1
 
         self.content = ShowPopup(urwid.Pile([]), title="Available keys")
         super().__init__(widget=self.content)
-        self.load_text()
+        self.set_selection(-1)
         self.set_scrollpos(-1)
 
     def keypress(self, size: 'tuple[int, int]',
