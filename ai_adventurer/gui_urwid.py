@@ -36,15 +36,9 @@ class GUI(object):
                                       wrap="ellipsis", align="left")
         self.footer_text = urwid.Text(("footer", "Welcome"),
                                       wrap="ellipsis", align="left")
-
         self.story_box = StoryBox()
-        story_body = urwid.Frame(
-            header=urwid.AttrMap(self.header_text, "header"),
-            body=urwid.AttrMap(self.story_box, "story"),
-            footer=urwid.AttrMap(self.footer_text, "footer"),
-        )
         self.event_reset = threading.Event()
-        self.loop = urwid.MainLoop(story_body,
+        self.loop = urwid.MainLoop(self._get_body(self.story_box),
                                    self.palette,
                                    unhandled_input=self.unhandled_input,
                                    pop_ups=True)
@@ -101,20 +95,30 @@ class GUI(object):
             text = " - ".join((text, self.game_title))
         self.header_text.set_text(("header", text))
 
+    def _get_body(self, body, footer=True):
+        """Generate the main content of the screen"""
+        if footer:
+            footer = urwid.AttrMap(self.footer_text, "footer")
+        else:
+            footer = None
+
+        return urwid.Frame(
+            header=urwid.AttrMap(self.header_text, "header"),
+            body=body,
+            footer=footer
+        )
+
+    def set_body(self, body, footer=True):
+        self.loop.widget = self._get_body(body=body, footer=footer)
+
     def load_game(self, game, choices):
         """Change the viewer to the game window"""
         self.event_reset.set()
         self.game = game
         self.set_header(self.game.title)
-
         self.story_box.choices = choices
-        story_body = urwid.Frame(
-            header=urwid.AttrMap(self.header_text, "header"),
-            body=urwid.AttrMap(self.story_box, "story"),
-            footer=urwid.AttrMap(self.footer_text, "footer"),
-        )
         self.story_box.load_game(game)
-        self.loop.widget = story_body
+        self.set_body(self.story_box)
 
     def load_mainmenu(self, choices):
         """Set up and present the main menu.
@@ -140,27 +144,23 @@ class GUI(object):
             self.loop.draw_screen()
 
         def regenerate_flame_loop(stop_event):
+            time.sleep(1)
             while not stop_event.is_set():
                 regenerate_flames()
                 time.sleep(0.1 + random.random() * 2)  # 0.1 - 2.1 seconds
 
         background = urwid.Filler(urwid.Columns(flamewidgets, dividechars=3),
                                   valign=("relative", 98))
-        self.body = urwid.Overlay(main,
-                                  background,
-                                  align=urwid.CENTER,
-                                  width=(urwid.RELATIVE, 40),
-                                  valign=urwid.MIDDLE,
-                                  height=(urwid.RELATIVE, 30),
-                                  min_width=20,
-                                  min_height=5,
-                                  )
-        self.story_body = urwid.Frame(
-            header=urwid.AttrMap(self.header_text, "header"),
-            body=self.body,
-            # footer=urwid.AttrMap(self.footer_text, "footer"),
-        )
-        self.loop.widget = self.story_body
+        body = urwid.Overlay(main,
+                             background,
+                             align=urwid.CENTER,
+                             width=(urwid.RELATIVE, 40),
+                             valign=urwid.MIDDLE,
+                             height=(urwid.RELATIVE, 30),
+                             min_width=20,
+                             min_height=5,
+                             )
+        self.set_body(body, footer=False)
 
         self.event_reset.clear()
         self.flame_thread = threading.Thread(target=regenerate_flame_loop,
@@ -170,13 +170,8 @@ class GUI(object):
     def load_gamelister(self, games, choices):
         """Load the game overview"""
         self.event_reset.set()
-        body = urwid.Frame(
-            header=urwid.AttrMap(self.header_text, "header"),
-            body=GameLister(games=games, choices=choices),
-            footer=urwid.AttrMap(self.footer_text, "footer"),
-        )
         # urwid.SimpleFocusListWalker(gamelist)))
-        self.loop.widget = body
+        self.set_body(GameLister(games=games, choices=choices))
 
     def start_input_edit_text(self, old_text):
         """Ask user to edit given text and return the new one.
@@ -201,8 +196,6 @@ class GUI(object):
         # TODO: sometimes the screen gets weird, not drawn correctly, when
         # returning from the editor (vim at least). Why? Redrawing doesn't seem
         # to work...
-        time.sleep(0.5)
-        self.loop.draw_screen()
         return new_text
 
     def start_input_line(self, question="Add a new line: "):
@@ -544,7 +537,7 @@ class StoryBox(urwid.Scrollable):
 class DecorationButton(urwid.Button):
     """Override Button to be able to remove the < and > marks."""
 
-    def __init__(self, label, left, right, *args, **kwargs):
+    def __init__(self, label, left="", right="", *args, **kwargs):
         self.button_left = self.convert_to_widget(left)
         self.button_right = self.convert_to_widget(right)
         super().__init__(label, *args, **kwargs)
