@@ -12,7 +12,7 @@ import random
 import re
 import subprocess
 import tempfile
-# import threading
+import threading
 import time
 
 import urwid
@@ -43,6 +43,7 @@ class GUI(object):
             body=urwid.AttrMap(self.story_box, "story"),
             footer=urwid.AttrMap(self.footer_text, "footer"),
         )
+        self.event_reset = threading.Event()
         self.loop = urwid.MainLoop(story_body,
                                    self.palette,
                                    unhandled_input=self.unhandled_input,
@@ -54,6 +55,7 @@ class GUI(object):
         self.loop.run()
 
     def quit(self, *args, **kwargs):
+        self.event_reset.set()
         raise urwid.ExitMainLoop()
 
     def unhandled_input(self, key: str) -> None:
@@ -64,9 +66,7 @@ class GUI(object):
 
         """
         if key in {'q', 'Q'}:
-            raise urwid.ExitMainLoop()
-        # self.header_text.set_text(("header",
-        #                            key + " - " + self.game_title))
+            self.quit()
         logger.debug(f"Unhandled input: {key!r}")
 
     # urwid has a palette in the form of tuples:
@@ -96,13 +96,14 @@ class GUI(object):
             text = self.game_title
         else:
             if isinstance(text, (tuple, list)):
-                # Could be using urwid formatter format
+                # Could be using urwid formatter format, which we don't want
                 text = text[1]
             text = " - ".join((text, self.game_title))
         self.header_text.set_text(("header", text))
 
     def load_game(self, game, choices):
         """Change the viewer to the game window"""
+        self.event_reset.set()
         self.game = game
         self.set_header(self.game.title)
 
@@ -122,72 +123,9 @@ class GUI(object):
         options.
 
         """
-        self.set_header()
+        self.event_reset.set()
+        self.set_header("Main menu")
         main = urwid.Padding(MainMenu(choices=choices), left=0, right=0)
-
-        class Flame(urwid.Text):
-            """Simulating a flame"""
-
-            def __init__(self):
-                super().__init__(self.get_flame())
-
-            def get_flame(self):
-                """Get a random flame"""
-                return ("flame", "\n".join(random.choice(self.flames)))
-
-            def regenerate_flame(self):
-                self.set_text(self.get_flame())
-
-            flames = (
-                (
-                    r"   )   ",
-                    r"  ) \  ",
-                    r" / ) ( ",
-                    r" \(_)/ ",
-                ),
-                (
-                    r"   (   ",
-                    r"  / (  ",
-                    r" ( / \ ",
-                    r" \(.)/ ",
-                ),
-                (
-                    r"  (    ",
-                    r"  )\   ",
-                    r" (\ \  ",
-                    r" \(.)  ",
-                ),
-                (
-                    r"       ",
-                    r"   /\  ",
-                    r"  (  \ ",
-                    r"  \.)/ ",
-                ),
-                (
-                    r"    )  ",
-                    r"   /(  ",
-                    r"  (\ \ ",
-                    r"  (.)/ ",
-                ),
-                (
-                    r"  /\   ",
-                    r" ( ^\  ",
-                    r" |/ \( ",
-                    r" \(-)/ ",
-                ),
-                (
-                    r"  /^\  ",
-                    r" ( _ ) ",
-                    r" (/ \( ",
-                    r" \(-)/ ",
-                ),
-                (
-                    r"   ^   ",
-                    r"  / \  ",
-                    r" ( \ ) ",
-                    r" \(-)/ ",
-                ),
-            )
 
         flamewidgets = (
             ('weight', 10, Flame()),
@@ -203,8 +141,8 @@ class GUI(object):
 
         def regenerate_flame_loop(stop_event):
             while not stop_event.is_set():
-                time.sleep(0.1 + random.random() * 2)  # 0.1 - 2.1 seconds
                 regenerate_flames()
+                time.sleep(0.1 + random.random() * 2)  # 0.1 - 2.1 seconds
 
         background = urwid.Filler(urwid.Columns(flamewidgets, dividechars=3),
                                   valign=("relative", 98))
@@ -224,18 +162,14 @@ class GUI(object):
         )
         self.loop.widget = self.story_body
 
-        delay = 0.1
-        for i in range(1000):
-            self.loop.set_alarm_in(delay, regenerate_flames)
-            delay += (random.random() * 0.5)
-
-        # stop_event = threading.Event()
-        # self.flame_thread = threading.Thread(target=regenerate_flame,
-        #                                      args=(stop_event,))
-        # self.flame_thread.start()
+        self.event_reset.clear()
+        self.flame_thread = threading.Thread(target=regenerate_flame_loop,
+                                             args=(self.event_reset,))
+        self.flame_thread.start()
 
     def load_gamelister(self, games, choices):
         """Load the game overview"""
+        self.event_reset.set()
         body = urwid.Frame(
             header=urwid.AttrMap(self.header_text, "header"),
             body=GameLister(games=games, choices=choices),
@@ -706,3 +640,68 @@ class ConfirmPopupLauncher(urwid.PopUpLauncher):
         return {'left': 2, 'top': 2,
                 'overlay_width': width,
                 'overlay_height': height}
+
+
+class Flame(urwid.Text):
+    """A simple ASCII flame which can change"""
+
+    def __init__(self):
+        super().__init__(self.get_flame())
+
+    def get_flame(self):
+        """Get a random flame"""
+        return ("flame", "\n".join(random.choice(self.flames)))
+
+    def regenerate_flame(self):
+        self.set_text(self.get_flame())
+
+    flames = (
+        (
+            r"   )   ",
+            r"  ) \  ",
+            r" / ) ( ",
+            r" \(_)/ ",
+        ),
+        (
+            r"   (   ",
+            r"  / (  ",
+            r" ( / \ ",
+            r" \(.)/ ",
+        ),
+        (
+            r"  (    ",
+            r"  )\   ",
+            r" (\ \  ",
+            r" \(.)  ",
+        ),
+        (
+            r"       ",
+            r"   /\  ",
+            r"  (  \ ",
+            r"  \.)/ ",
+        ),
+        (
+            r"    )  ",
+            r"   /(  ",
+            r"  (\ \ ",
+            r"  (.)/ ",
+        ),
+        (
+            r"  /\   ",
+            r" ( ^\  ",
+            r" |/ \( ",
+            r" \(-)/ ",
+        ),
+        (
+            r"  /^\  ",
+            r" ( _ ) ",
+            r" (/ \( ",
+            r" \(-)/ ",
+        ),
+        (
+            r"   ^   ",
+            r"  / \  ",
+            r" ( \ ) ",
+            r" \(-)/ ",
+        ),
+    )
