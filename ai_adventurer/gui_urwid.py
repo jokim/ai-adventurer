@@ -36,9 +36,8 @@ class GUI(object):
                                       wrap="ellipsis", align="left")
         self.footer_text = urwid.Text(("footer", "Welcome"),
                                       wrap="ellipsis", align="left")
-        self.story_box = StoryBox()
         self.event_reset = threading.Event()
-        self.loop = urwid.MainLoop(self._get_body(self.story_box),
+        self.loop = urwid.MainLoop(urwid.Text(""),
                                    self.palette,
                                    unhandled_input=self.unhandled_input,
                                    pop_ups=True)
@@ -114,11 +113,8 @@ class GUI(object):
     def load_game(self, game, choices):
         """Change the viewer to the game window"""
         self.event_reset.set()
-        self.game = game
-        self.set_header(self.game.title)
-        self.story_box.choices = choices
-        self.story_box.load_game(game)
-        self.set_body(self.story_box)
+        self.set_header(game.title)
+        self.set_body(StoryBox(game=game, choices=choices))
 
     def load_mainmenu(self, choices):
         """Set up and present the main menu.
@@ -144,10 +140,10 @@ class GUI(object):
             self.loop.draw_screen()
 
         def regenerate_flame_loop(stop_event):
-            time.sleep(1)
+            time.sleep(0.1)
             while not stop_event.is_set():
                 regenerate_flames()
-                time.sleep(0.1 + random.random() * 2)  # 0.1 - 2.1 seconds
+                time.sleep(0.1 + random.random())  # 0.1 - 1.1 seconds
 
         background = urwid.Filler(urwid.Columns(flamewidgets, dividechars=3),
                                   valign=("relative", 98))
@@ -304,7 +300,7 @@ class MainMenu(Menu):
 class StoryBox(urwid.Scrollable):
     """The box that handles the story itself."""
 
-    def __init__(self, widget=None, force_forward_keypress=False, game=None):
+    def __init__(self, game, choices):
         self.internal_choices = {
             'j': ('Move selection one down', self.move_selection_down),
             'k': ('Move selection one up', self.move_selection_up),
@@ -312,17 +308,12 @@ class StoryBox(urwid.Scrollable):
             'end': ('Move selection to last', lambda: self.set_selection(-1)),
             '?': ('Show help', self.open_help_popup),
         }
-        if game:
-            self.game = game
-        self.content = ShowPopup(urwid.Pile([]), title="Available keys")
-        self.selected_part = 0
-        super().__init__(widget=self.content,
-                         force_forward_keypress=force_forward_keypress)
-
-    def load_game(self, game):
-        """Load a new game, resetting old settings"""
         self.game = game
-        self.set_selection(-1)
+        self.choices = choices
+        self.selected_part = 0
+
+        self.content = ShowPopup(urwid.Pile([]), title="Available keys")
+        super().__init__(widget=self.content)
         self.load_text()
         self.set_scrollpos(-1)
 
