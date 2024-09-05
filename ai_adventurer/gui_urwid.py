@@ -33,9 +33,9 @@ class GUI(object):
 
         # Build the layout
         self.header_text = urwid.Text(("header", self.game_title),
-                                      wrap="ellipsis", align="left")
+                                      wrap="ellipsis", align="center")
         self.footer_text = urwid.Text(("footer", "Welcome"),
-                                      wrap="ellipsis", align="left")
+                                      wrap="ellipsis", align="center")
         self.event_reset = threading.Event()
         self.loop = urwid.MainLoop(urwid.Text(""),
                                    self.palette,
@@ -115,7 +115,11 @@ class GUI(object):
         self.event_reset.set()
         self.set_header(game.title)
         self.story_box = StoryBox(game=game, choices=choices)
-        self.set_body(self.story_box)
+        self.set_body(urwid.Padding(
+            self.story_box,
+            align="center",
+            width=70,
+        ))
 
     def load_mainmenu(self, choices):
         """Set up and present the main menu.
