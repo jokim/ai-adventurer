@@ -271,6 +271,7 @@ class GameController(object):
         newline = cleanup_text(newline)
         self.game.change_line(selected, newline)
         self.gui.send_message("Last line updated")
+        self.gui.story_box.load_text()
 
     def delete_active_line(self, widget):
         """Delete chosen line/response"""
