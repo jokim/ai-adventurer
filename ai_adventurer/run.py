@@ -170,7 +170,7 @@ class GameController(object):
             "e": ("Edit active part", self.edit_active_line),
             "d": ("Delete active part", self.delete_active_line),
             "a": ("Add new part", self.add_line_dialog),
-            "t": ("Edit title of the story", self.edit_title),
+            "t": ("Edit title of the story", self.edit_title_dialog),
             "s": ("Edit the story details", self.edit_story_details),
             "i": ("Add instruction to the story", self.add_instruction_dialog),
             "I": ("Edit system instructions", self.edit_system_instructions),
@@ -245,8 +245,16 @@ class GameController(object):
             self.gui.story_box.set_selection(-1)
             self.gui.send_message("New line added")
 
-    def edit_title(self, widget):
-        new_title = self.gui.start_input_edit_text(self.game.title)
+    def edit_title_dialog(self, widget):
+        """Start dialog for editing the title"""
+        self.gui.ask_oneliner(
+            question="Edit title: ",
+            callback=self.save_title,
+            existing_text=self.game.title,
+        )
+
+    def save_title(self, widget, new_title):
+        new_title = new_title.strip()
         if new_title:
             self.game.set_title(new_title)
             self.gui.set_header(self.game.title)
