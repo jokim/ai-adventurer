@@ -172,7 +172,7 @@ class GameController(object):
             "a": ("Add new part", self.add_line_dialog),
             "t": ("Edit title of the story", self.edit_title),
             "s": ("Edit the story details", self.edit_story_details),
-            "i": ("Add instruction to the story", self.add_instruction),
+            "i": ("Add instruction to the story", self.add_instruction_dialog),
             "I": ("Edit system instructions", self.edit_system_instructions),
             "q": ("Quit and back to mainmenu", self.quit_game),
             "enter": ("Generate new line", self.next_line),
@@ -227,15 +227,20 @@ class GameController(object):
 
     def add_line(self, widget, newline):
         """Write a new line/response"""
-        if newline:
+        if newline.strip():
             self.game.add_lines(newline)
             self.gui.story_box.set_selection(-1)
             self.gui.send_message("New line added")
 
-    def add_instruction(self, widget):
+    def add_instruction_dialog(self, widget):
+        """Start dialog for a new instruction"""
+        self.gui.ask_oneliner(
+            question="Add new instruction: ",
+            callback=self.add_instruction)
+
+    def add_instruction(self, widget, newline):
         """Write a new instruction"""
-        newline = self.gui.start_input_edit_text("")
-        if newline:
+        if newline.strip():
             self.game.add_lines(f"INSTRUCT: {newline}")
             self.gui.story_box.set_selection(-1)
             self.gui.send_message("New line added")
