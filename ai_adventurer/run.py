@@ -169,7 +169,7 @@ class GameController(object):
             "r": ("Retry active part", self.retry_line),
             "e": ("Edit active part", self.edit_active_line),
             "d": ("Delete active part", self.delete_active_line),
-            "a": ("Add new part", self.add_line),
+            "a": ("Add new part", self.add_line_dialog),
             "t": ("Edit title of the story", self.edit_title),
             "s": ("Edit the story details", self.edit_story_details),
             "i": ("Add instruction to the story", self.add_instruction),
@@ -219,9 +219,14 @@ class GameController(object):
         self.gui.story_box.load_text()
         self.gui.send_message("Part regenerated, if it was the last…")
 
-    def add_line(self, widget):
+    def add_line_dialog(self, widget):
+        """Start dialog for getting a new line of the story"""
+        self.gui.ask_oneliner(
+            question="Add new part: ",
+            callback=self.add_line)
+
+    def add_line(self, widget, newline):
         """Write a new line/response"""
-        newline = self.gui.start_input_edit_text("")
         if newline:
             self.game.add_lines(newline)
             self.gui.story_box.set_selection(-1)

@@ -615,6 +615,7 @@ class InputWindow(urwid.PopUpLauncher):
     def on_edit_change(self, widget, new_text):
         logger.debug(f"Got {new_text!r}")
         if new_text.endswith("\n"):
+            self.close_pop_up()
             self.callback(widget, new_text)
 
     def create_pop_up(self):
