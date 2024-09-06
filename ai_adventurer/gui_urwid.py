@@ -11,6 +11,7 @@ import logging
 import random
 import re
 import subprocess
+import string
 import tempfile
 import threading
 import time
@@ -65,7 +66,7 @@ class GUI(object):
                 self.loop.widget.close_pop_up()
         if key in {'q', 'Q'}:
             self.quit()
-        logger.debug(f"Unhandled input: {key!r}")
+        logger.debug(f"In main GUI: Unhandled input: {key!r}")
 
     # urwid has a palette in the form of tuples:
     # 1. name of attribute (can be anything I want?)
@@ -349,7 +350,7 @@ class StoryBox(urwid.Scrollable):
         if key in self.internal_choices:
             self.internal_choices[key][1]()
             return
-        logger.debug(f"Unhandled key: {key!r}")
+        logger.debug(f"In StoryBox: Unhandled key: {key!r}")
         return super().keypress(size, key)
 
     def move_selection_up(self):
@@ -602,7 +603,7 @@ class InputWindow(urwid.PopUpLauncher):
 
     def set_popup_content(self):
         """Set or change the content of the popup."""
-        edit = urwid.Edit(
+        edit = ReadlineIshEdit(
             caption=self.question + "\n",
             edit_text=self.edit_text,
             multiline=True,
@@ -638,6 +639,49 @@ class InputWindow(urwid.PopUpLauncher):
             self.close_pop_up()
             return
         return super().keypress(size, key)
+
+
+class ReadlineIshEdit(urwid.Edit):
+    """Add *some* readline features to the Edit widget.
+
+    Inspired by `urwid_readline`- https://github.com/rr-/urwid_readline/ - but
+    disagree with some details, e.g. ctrl+l clearing the whole shebang.
+
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Copied from https://github.com/rr-/urwid_readline/:
+        word_chars = string.ascii_letters + string.digits + "_",
+        self._word_regex1 = re.compile(
+            "([%s]+)" % "|".join(re.escape(ch) for ch in word_chars)
+        )
+        self.keymap = {
+            "ctrl w":   self.backward_kill_word,
+        }
+
+    def keypress(self, size, key):
+        """Subclass to handle extra shortcut keys"""
+        if key in self.keymap:
+            self.keymap[key]()
+            return
+        return super().keypress(size, key)
+
+    def backward_word(self):
+        """Move the cursor backwards one word"""
+        for match in self._word_regex1.finditer(
+            self._edit_text[0:self._edit_pos][::-1]
+        ):
+            self.set_edit_pos(self._edit_pos - match.end(1))
+            return
+        self.set_edit_pos(0)
+
+    def backward_kill_word(self):
+        """Delete the word previous to the cursor"""
+        pos = self._edit_pos
+        self.backward_word()
+        self.set_edit_text(
+            self._edit_text[:self._edit_pos] + self._edit_text[pos:]
+        )
 
 
 class ShowPopup(urwid.PopUpLauncher):
