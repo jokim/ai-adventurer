@@ -58,6 +58,11 @@ class GUI(object):
         comes here first, since it starts at the top?
 
         """
+        if key == "ctrl d":
+            # TODO: This is a hack, since I don't know how to enforce that the
+            # popup' keypress function is used...
+            if hasattr(self.loop.widget, 'close_pop_up'):
+                self.loop.widget.close_pop_up()
         if key in {'q', 'Q'}:
             self.quit()
         logger.debug(f"Unhandled input: {key!r}")
@@ -237,6 +242,19 @@ class GUI(object):
                                       callback=callback, user_data=user_data)
         self.loop.widget = launch
         launch.open_pop_up()
+
+    def ask_oneliner(self, question="Give input: ", callback=None,
+                     user_data=None, existing_text=""):
+        """Ask the user to confirm something.
+
+        If the user confirms, the callback is called. Otherwise the popup is
+        removed and it's back to the previous screen.
+
+        """
+        editer = InputWindow(self.loop.widget, question=question,
+                             callback=callback, edit_text=existing_text)
+        self.loop.widget = editer
+        editer.open_pop_up()
 
 
 class Menu(urwid.ListBox):
@@ -562,6 +580,65 @@ class GameLister(Menu):
         return gamelist
 
 
+class InputWindow(urwid.PopUpLauncher):
+    """For popping up a window, asking for user input, with canceling.
+
+    Subclass for different input fields.
+
+    """
+
+    text_width = 70
+
+    def __init__(self, original_widget, question, callback, edit_text=""):
+        super().__init__(original_widget)
+        self.question = question
+        self.edit_text = edit_text
+        self.callback = callback
+
+        # TODO: try to implement this without buttons first
+        # self.confirm_button = urwid.Button(
+        #     "Ok", on_press=lambda _: self.close_pop_up())
+        self.set_popup_content()
+
+    def set_popup_content(self):
+        """Set or change the content of the popup."""
+        edit = urwid.Edit(
+            caption=self.question + "\n",
+            edit_text=self.edit_text,
+            multiline=True,
+            allow_tab=False,
+        )
+        urwid.connect_signal(edit, "change", self.on_edit_change)
+        self.popup = urwid.LineBox(urwid.Padding(edit, align="center",
+                                                 width=self.text_width))
+
+    def on_edit_change(self, widget, new_text):
+        logger.debug(f"Got {new_text!r}")
+        if new_text.endswith("\n"):
+            self.callback(widget, new_text)
+
+    def create_pop_up(self):
+        return self.popup
+
+    def get_pop_up_parameters(self):
+        # TODO: fix this, crashes at the wrong sizes!
+        width, height = self.popup.pack()
+        logger.debug(f"got width {width} and height {height}")
+        return {'left': 20,
+                'top': 2,
+                'overlay_width': 'pack',
+                'overlay_height': 'pack',
+                }
+
+    def keypress(self, size, key):
+        # TODO: This does not work. It should probably be in the widget above
+        logger.debug("In popuplaunhers' keypress!")
+        if key == "ctrl d":
+            self.close_pop_up()
+            return
+        return super().keypress(size, key)
+
+
 class ShowPopup(urwid.PopUpLauncher):
     """A simple popup to show some text and quit"""
 
@@ -624,7 +701,6 @@ class ConfirmPopupLauncher(urwid.PopUpLauncher):
         return self.popup
 
     def get_pop_up_parameters(self):
-        logger.debug("Popuplauncher called - get_pop_up_parameters")
         width, height = self.popup.pack()
         return {'left': 2, 'top': 2,
                 'overlay_width': width,

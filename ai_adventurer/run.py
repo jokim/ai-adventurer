@@ -183,14 +183,16 @@ class GameController(object):
         self.controller.start_mainmenu()
 
     def start_new_game(self):
+        """Start the initial dialog for creating a new story"""
         self.game.set_instructions(
             clean_text_for_saving(self.nlp.default_instructions))
+        self.gui.ask_oneliner(
+            question="A concept for the story (leave blank for random): ",
+            callback=self.start_new_game_with_concept)
 
-        # TODO: get back the input functionality, to get data from the user
-        concept = None
-        # concept = cleanup_text(
-        #     self.gui.start_input_line("A concept for the story (leave blank "
-        #                               + "to get a random from the AI)? "))
+    def start_new_game_with_concept(self, widget, concept):
+        """Continue the new game dialog, after concept input"""
+        concept = cleanup_text(concept).strip()
         if not concept:
             concept = self.nlp.prompt_for_concept()
         self.game.set_details(concept)
