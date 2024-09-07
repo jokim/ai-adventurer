@@ -72,6 +72,7 @@ class Database(object):
         _Base.metadata.create_all(self._engine)
 
     def create_new_game(self, title=""):
+        """Create a new game in the db"""
         with orm.Session(self._engine) as session:
             game = Game(title=title)
             session.add(game)
@@ -79,6 +80,12 @@ class Database(object):
             return game.gameid
 
     def delete_game(self, gameid):
+        """Delete a given game from the db.
+
+        TODO: In the future, might rather want to tag it as deleted, to be able
+        to undelete it later?
+
+        """
         assert isinstance(gameid, int)
         with orm.Session(self._engine) as session:
             game = self._get_game(gameid, _session=session)
@@ -95,6 +102,7 @@ class Database(object):
         #     # TODO: missing copy functionality
 
     def _get_game(self, gameid, _session=None):
+        """Get a game object for the given gameid"""
         if not _session:
             _session = orm.Session(self._engine)
         for game in _session.scalars(
@@ -103,6 +111,7 @@ class Database(object):
             return game
 
     def get_game(self, gameid, _session=None):
+        """Get a given games data"""
         game = self._get_game(gameid=gameid, _session=_session)
         return {
             "gameid": game.gameid,
@@ -113,6 +122,7 @@ class Database(object):
         # How to also return Lines for the given Game?
 
     def get_games(self, _session=None):
+        """Get a list of games"""
         if not _session:
             _session = orm.Session(self._engine)
         ret = []
@@ -128,6 +138,7 @@ class Database(object):
         return ret
 
     def get_lines(self, gameid, _session=None):
+        """Get all lines, or story chunks, from a given game"""
         if not _session:
             _session = orm.Session(self._engine)
         ret = []
@@ -138,6 +149,12 @@ class Database(object):
         return ret
 
     def save_game(self, game):
+        """Save given game data to the db, including its lines.
+
+        @type game: ai_adventurer.db.Game
+        @param game: The game object to save.
+
+        """
         session = orm.Session(self._engine)
         db_game = self._get_game(game.gameid, _session=session)
 
