@@ -118,8 +118,22 @@ class Controller(object):
         logger.info(f"Deleting game {gameid}")
         self.db.delete_game(gameid)
         self.gui.send_message(f"Game {gameid} deleted")
-        # Reload screen, so the deleted game is gone
-        self.start_game_lister()
+        # Reload game list, but without resetting the widget, so focus is kept
+        games = []
+        for game in self.db.get_games():
+            games.append({
+                'gameid': game['gameid'],
+                'title': game['title'],
+                'length': 'TODO',
+                'callback': self.load_game,
+            })
+        # TODO: seems like I've not understood something here. How to just
+        # remove one line in the body?
+        old_pos = min(len(games) - 1,
+                      self.gui.loop.widget.base_widget.body.focus_position)
+        self.gui.loop.widget.base_widget.body.games = games
+        self.gui.loop.widget.base_widget.body.regenerate_body()
+        self.gui.loop.widget.base_widget.body.set_focus(old_pos)
 
     def copy_game(self, widget, focused):
         gameid = focused.base_widget.gamedata["gameid"]

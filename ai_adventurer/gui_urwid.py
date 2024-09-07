@@ -290,6 +290,10 @@ class Menu(urwid.ListBox):
             body.append(button)
         return body
 
+    def regenerate_body(self):
+        """Update the body widget, in case data has changed"""
+        self.body = self.generate_body()
+
     def generate_menu_item(self, caption, callback) -> urwid.AttrMap:
         """Generate one button. Subclass to override."""
         button = urwid.Button(caption, on_press=callback)
