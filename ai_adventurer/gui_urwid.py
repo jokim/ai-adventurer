@@ -200,9 +200,10 @@ class GUI(object):
             tmpfile.seek(0)
             new_text = tmpfile.read()
 
-        # TODO: sometimes the screen gets weird, not drawn correctly, when
-        # returning from the editor (vim at least). Why? Redrawing doesn't seem
-        # to work...
+        # Force redrawing the screen. I guess editors write back the old
+        # buffer, making urwid look weird.
+        self.loop.screen.clear()
+        self.loop.draw_screen()
         return new_text
 
     def start_input_line(self, question="Add a new line: "):
