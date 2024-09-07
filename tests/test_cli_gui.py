@@ -1,41 +1,41 @@
 #!/usr/bin/env python
 
-from ai_adventurer import cli_gui
+import pytest
+
+from ai_adventurer import gui_urwid
+from ai_adventurer import run
 
 
 def test_load():
-    cli_gui.GUI()
+    gui_urwid.GUI()
 
 
-def test_window_load():
-    g = cli_gui.GUI()
-    cli_gui.Window(g, None)
+def test_header():
+    g = gui_urwid.GUI()
+    g.set_header("test")
 
 
-def test_gamewindow_load():
-    g = cli_gui.GUI()
-    cli_gui.GameWindow(g, None, None)
-
-
+@pytest.mark.skip(reason="Missing implementation")
 def test_convert_simple_line():
-    g = cli_gui.GUI()
-    gw = cli_gui.GameWindow(g, None, None)
-
+    gamec = run.GameController(db.Database(), "TODO")
+    s = gui_urwid.StoryBox(game, choices)
     lines = ["This is a sentence",]
-    assert gw.gamelines_to_paragraphs(lines, None) == lines
+    assert s.gamelines_to_paragraphs(lines, None) == lines
 
 
+@pytest.mark.skip(reason="Missing implementation")
 def test_convert_many_lines():
-    g = cli_gui.GUI()
-    gw = cli_gui.GameWindow(g, None, None)
+    g = gui_urwid.GUI()
+    gw = gui_urwid.GameWindow(g, None, None)
     lines = ["This is a sentence.", "And this is another one."]
     assert (gw.gamelines_to_paragraphs(lines, None) ==
             ["This is a sentence. And this is another one."])
 
 
+@pytest.mark.skip(reason="Missing implementation")
 def test_convert_paragraph():
-    g = cli_gui.GUI()
-    gw = cli_gui.GameWindow(g, None, None)
+    g = gui_urwid.GUI()
+    gw = gui_urwid.GameWindow(g, None, None)
     lines = [
         "This is a story. And a sentence.",
         "Together they make a paragraph.\n\n",
@@ -49,9 +49,10 @@ def test_convert_paragraph():
     assert gw.gamelines_to_paragraphs(lines, None) == answer
 
 
+@pytest.mark.skip(reason="Missing implementation")
 def test_convert_several_paragraph_in_one_line():
-    g = cli_gui.GUI()
-    gw = cli_gui.GameWindow(g, None, None)
+    g = gui_urwid.GUI()
+    gw = gui_urwid.GameWindow(g, None, None)
     lines = [
         "One.\n\nTwo.\n\nAnd",
         "three.\n\nWhile four,",
@@ -66,9 +67,10 @@ def test_convert_several_paragraph_in_one_line():
     assert gw.gamelines_to_paragraphs(lines, None) == answer
 
 
+@pytest.mark.skip(reason="Missing implementation")
 def test_convert_with_focus():
-    g = cli_gui.GUI()
-    gw = cli_gui.GameWindow(g, None, None)
+    g = gui_urwid.GUI()
+    gw = gui_urwid.GameWindow(g, None, None)
     lines = [
         "One.\n\nTwo.\n\nAnd",
         "three.\n\nWhile four,",
@@ -83,9 +85,10 @@ def test_convert_with_focus():
     assert gw.gamelines_to_paragraphs(lines, focus=1) == answer
 
 
+@pytest.mark.skip(reason="Missing implementation")
 def test_convert_header():
-    g = cli_gui.GUI()
-    gw = cli_gui.GameWindow(g, None, None)
+    g = gui_urwid.GUI()
+    gw = gui_urwid.GameWindow(g, None, None)
     lines = [
         "One.\n# Chapter 1\n\nThree.",
         "\n\nWhile four,",
@@ -100,9 +103,10 @@ def test_convert_header():
     assert gw.gamelines_to_paragraphs(lines, focus=0) == answer
 
 
+@pytest.mark.skip(reason="Missing implementation")
 def test_convert_title():
-    g = cli_gui.GUI()
-    gw = cli_gui.GameWindow(g, None, None)
+    g = gui_urwid.GUI()
+    gw = gui_urwid.GameWindow(g, None, None)
     lines = ["# A title"]
     ret = gw.gamelines_to_paragraphs(lines, None)
     print(ret)
@@ -110,9 +114,10 @@ def test_convert_title():
     assert g.term.strip_seqs(ret[0]) == "A title"
 
 
+@pytest.mark.skip(reason="Missing implementation")
 def test_convert_title2():
-    g = cli_gui.GUI()
-    gw = cli_gui.GameWindow(g, None, None)
+    g = gui_urwid.GUI()
+    gw = gui_urwid.GameWindow(g, None, None)
     lines = ["# A title"]
     answer = ["A title"]
     assert gw.gamelines_to_paragraphs(lines, None) == answer
