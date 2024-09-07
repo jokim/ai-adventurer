@@ -388,7 +388,7 @@ class MistralNLP(OnlineNLPClient):
     # Higher values like 0.8 will make the output more random, while lower
     # values like 0.2 will make it more focused and deterministic. We generally
     # recommend altering this or top_p but not both.
-    temperature = 0.8
+    temperature = 0.75
 
     # The top probability tokens to consider
     # From <https://docs.mistral.ai/api/#tag/chat>:
