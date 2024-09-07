@@ -373,15 +373,30 @@ class MistralNLP(OnlineNLPClient):
 
     """
 
-    # Max tokens to return from the AI in prompts
-    max_tokens = 400  # about 100-200 words?
+    mistral_model = "open-mistral-nemo"
+    api_key_url = "https://console.mistral.ai/api-keys/"
+    secrets_api_key_name = "mistral-key"
 
     # Waiting limit when waiting for response from the AIs API
     timeout_ms = 120000
 
-    mistral_model = "open-mistral-nemo"
-    api_key_url = "https://console.mistral.ai/api-keys/"
-    secrets_api_key_name = "mistral-key"
+    # Max tokens to return from the AI in prompts
+    max_tokens = 100  # about 25-50 words?
+
+    # The sampling temperature, between 0.0 and 1.0.
+    # From <https://docs.mistral.ai/api/#tag/chat>:
+    # Higher values like 0.8 will make the output more random, while lower
+    # values like 0.2 will make it more focused and deterministic. We generally
+    # recommend altering this or top_p but not both.
+    temperature = 0.8
+
+    # The top probability tokens to consider
+    # From <https://docs.mistral.ai/api/#tag/chat>:
+    # Nucleus sampling, where the model considers the results of the tokens
+    # with top_p probability mass. So 0.1 means only the tokens comprising the
+    # top 10% probability mass are considered. We generally recommend altering
+    # this or temperature but not both.
+    top_p = 1.0
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -431,6 +446,8 @@ class MistralNLP(OnlineNLPClient):
             timeout_ms=self.timeout_ms,
             safe_prompt=False,
             stream=False,
+            temperature=self.temperature,
+            top_p=self.top_p,
         )
         logger.debug("Response time: %.3f seconds", time.time() - starttime)
         return response
