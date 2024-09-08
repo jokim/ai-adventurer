@@ -76,16 +76,16 @@ class GUI(object):
     # 5. foreground for 88 and 256 colors (optional)
     # 6. background for 88 and 256 colors (optional)
     palette = [
-        ("header", "black,bold", "dark blue", "", "#000,bold", "#f90"),
-        ("title",  "black,bold", "dark blue", "", "#000,bold", "#f90"),
-        ("footer", "black,bold", "dark blue", "", "#000,bold", "#f90"),
-        ("story", "white", "dark blue", "", "#fff", "#000"),
+        ("header", "black,bold", "brown", "", "black,bold", "brown"),
+        ("title",  "black,bold", "brown", "", "black,bold", "brown"),
+        ("footer", "black,bold", "brown", "", "black,bold", "brown"),
+        ("story", "white", "", "", "#fff", ""),
         ("selected", "black", "white", "", "#000", "#fff"),
         ("reversed", "black,bold", "white", "", "#000,bold", "#fff"),
         ("question", "white,bold", "dark gray", "", "#fff,bold", "#000"),
-        ("chapter", "black,bold", "dark blue", "", "#000,bold", "#f90"),
-        ("instruction", "light gray", "black", "", "#bbb", "#222"),
-        ("flame", "light red", "", "", "#f90", ""),
+        ("chapter", "black,bold", "brown", "", "#000,bold", "brown"),
+        ("instruction", "light gray", "dark gray", "", "dark gray", "#222"),
+        ("flame", "light red", "", "", "light red", ""),
         # ("streak", "black", "dark red"),
         # ("bg", "white", "dark blue", "", "#fff", "#000"),
     ]
