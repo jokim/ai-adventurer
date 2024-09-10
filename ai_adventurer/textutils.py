@@ -27,6 +27,19 @@ class Section(object):
     def __str__(self):
         return self.text
 
+    def _get_short_text(self, text, maxlength=15):
+        """Get a shortened part of given text"""
+        if len(text) <= maxlength:
+            return text
+        return text[0:maxlength] + "…"
+
+    def __repr__(self):
+        txt = self._get_short_text(str(self))
+        selected = ""
+        if self.selected:
+            selected = " Selected!"
+        return f"<{self.__class__.__name__} '{txt}'{selected}>"
+
 
 class Paragraph(Section):
     """A paragraph of a story.
@@ -59,13 +72,10 @@ class Header(Section):
         if not header:
             logger.warning("Unhandled title: %r", raw)
             self.level = None
-            self.title = raw
+            self.text = raw
         else:
             self.level = header.group(1)
-            self.title = header.group(2)
-
-    def __str__(self):
-        return self.title
+            self.text = header.group(2)
 
 
 class Instruction(Section):
@@ -107,7 +117,7 @@ class Story(object):
         """Parse raw input and convert to sections"""
         past_text = []
         sections = []
-        for linenumber, chunk in enumerate(parts):
+        for partnumber, chunk in enumerate(parts):
             for row in chunk.splitlines():
                 if not row:
                     # Empty row means a newline, which means a new paragraph
@@ -121,7 +131,7 @@ class Story(object):
                         sections.append(Paragraph(past_text))
                         past_text = []
                     section = Header(row)
-                    if linenumber == selected_part:
+                    if partnumber == selected_part:
                         section.selected = True
                     sections.append(section)
                 elif row.strip().startswith('INSTRUCT:'):
@@ -129,12 +139,12 @@ class Story(object):
                         sections.append(Paragraph(past_text))
                         past_text = []
                     section = Instruction(row)
-                    if linenumber == selected_part:
+                    if partnumber == selected_part:
                         section.selected = True
                     sections.append(section)
                 else:
                     section = Section(row)
-                    if linenumber == selected_part:
+                    if partnumber == selected_part:
                         section.selected = True
                     past_text.append(section)
         if past_text:

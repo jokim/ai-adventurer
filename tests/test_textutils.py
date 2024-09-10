@@ -37,6 +37,54 @@ def test_instruction():
 def test_story():
     s = tu.Story(("One", "Two"))
     assert s
+    print(s.sections)
+    assert len(s.sections) > 0
+
+
+def test_story_simple_title():
+    s = tu.Story(("# Title",))
+    print(s.sections)
+    assert len(s.sections) == 1
+    assert isinstance(s.sections[0], tu.Header)
+    assert str(s.sections[0]) == "Title"
+
+
+def test_story_selected_first():
+    s = tu.Story((
+        "# Title",
+        "And a paragraph",
+    ), selected_part=0)
+    print(s.sections)
+    assert len(s.sections) == 2
+    assert isinstance(s.sections[0], tu.Header)
+    assert s.sections[0].selected is True
+
+
+def test_story_selected_second():
+    s = tu.Story((
+        "# Title",
+        "And a paragraph",
+    ), selected_part=1)
+    print(s.sections)
+    assert isinstance(s.sections[1], tu.Paragraph)
+    assert s.sections[0].selected is False
+    print(s.sections[1])
+    assert s.sections[1].selected is True
+
+
+def test_story_selected_third():
+    s = tu.Story((
+        "# Title",
+        "",
+        "A paragraph",
+        "",
+        "Another one",
+    ), selected_part=4)
+    print(s.sections)
+    assert isinstance(s.sections[1], tu.Paragraph)
+    assert s.sections[0].selected is False
+    print(s.sections[1])
+    assert s.sections[1].selected is True
 
 
 def test_story_urwid():
