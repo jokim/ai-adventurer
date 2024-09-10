@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import pytest
+import urwid
 
 from ai_adventurer import gui_urwid
 from ai_adventurer import run
@@ -13,6 +14,37 @@ def test_load():
 def test_header():
     g = gui_urwid.GUI()
     g.set_header("test")
+
+
+class MockMainLoop(urwid.MainLoop):
+    def run(self):
+        # Replace this with your custom logic for testing
+        pass
+
+
+def test_simple_run():
+    g = gui_urwid.GUI()
+    g.loop = MockMainLoop(g.loop.widget, g.palette,
+                          unhandled_input=g.unhandled_input)
+    g.activate()
+
+
+def test_simple_exit():
+    g = gui_urwid.GUI()
+    g.loop = MockMainLoop(g.loop.widget, g.palette,
+                          unhandled_input=g.unhandled_input)
+    g.activate()
+    with pytest.raises(urwid.ExitMainLoop):
+        g.quit()
+
+
+def test_exit_input():
+    g = gui_urwid.GUI()
+    g.loop = MockMainLoop(g.loop.widget, g.palette,
+                          unhandled_input=g.unhandled_input)
+    g.activate()
+    with pytest.raises(urwid.ExitMainLoop):
+        g.unhandled_input(key="q")
 
 
 @pytest.mark.skip(reason="Missing implementation")

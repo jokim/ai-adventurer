@@ -10,13 +10,16 @@ https://urwid.org/
 import logging
 import random
 import re
-import subprocess
 import string
+import subprocess
 import tempfile
+import textwrap
 import threading
 import time
 
 import urwid
+
+from ai_adventurer import textutils as tu
 
 logger = logging.getLogger(__name__)
 
@@ -344,10 +347,13 @@ class StoryBox(urwid.Scrollable):
         self.choices = choices
         self.selected_part = -1
 
+        # Store the previous size, to be able to adjust scrollpos to the
+        # selected text:
+        self._cached_size = None
+
         self.content = ShowPopup(urwid.Pile([]), title="Available keys")
         super().__init__(widget=self.content)
         self.set_selection(-1)
-        self.set_scrollpos(-1)
 
     def keypress(self, size: 'tuple[int, int]',
                  key: 'str') -> 'str | None':
@@ -361,6 +367,10 @@ class StoryBox(urwid.Scrollable):
         logger.debug(f"In StoryBox: Unhandled key: {key!r}")
         return super().keypress(size, key)
 
+    def render(self, size, focus=False):
+        self._cached_size = size
+        return super().render(size, focus)
+
     def move_selection_up(self):
         old_id = self.selected_part
         self.selected_part -= 1
@@ -368,7 +378,8 @@ class StoryBox(urwid.Scrollable):
             self.selected_part = 0
 
         if old_id != self.selected_part:
-            self.load_text()
+            newpos = self.load_text()
+            self.set_scrollpos(newpos)
 
     def move_selection_down(self):
         old_id = self.selected_part
@@ -377,7 +388,8 @@ class StoryBox(urwid.Scrollable):
             self.selected_part = len(self.game.lines) - 1
 
         if old_id != self.selected_part:
-            self.load_text()
+            newpos = self.load_text()
+            self.set_scrollpos(newpos)
 
     def set_selection(self, lineid):
         """Set the selection to a certain part"""
@@ -387,21 +399,27 @@ class StoryBox(urwid.Scrollable):
         old_id = self.selected_part
         self.selected_part = lineid
         if old_id != lineid:
-            self.load_text()
+            newpos = self.load_text()
             if lineid == len(self.game.lines) - 1:
                 self.set_scrollpos(-1)
             elif lineid == 0:
                 self.set_scrollpos(0)
+            else:
+                self.set_scrollpos(newpos)
 
     def load_text(self):
         """Load in the games story"""
         widgets = []
-        rows, select_start = self.gamelines_to_paragraphs(self.game.lines,
-                                                          self.selected_part)
-        for row in rows:
-            widgets.append(urwid.Text(row))
+        story = tu.Story(self.game.lines, self.selected_part)
+        rows, select_start = story.convert_to_urwid()
+        row_selected_start = 0
+        for i, row in enumerate(rows):
+            t = urwid.Text(row)
+            if i <= select_start:
+                row_selected_start += len(textwrap.wrap(t.text))
+            widgets.append(t)
         self.content.original_widget = urwid.Pile(widgets)
-        return select_start
+        return row_selected_start
 
     def open_help_popup(self):
         """View a popup with the key shortcuts"""
@@ -414,147 +432,6 @@ class StoryBox(urwid.Scrollable):
         self.content.set_popup_content(urwid.Pile([urwid.Text(v) for v in
                                                    sorted(values)]))
         self.content.open_pop_up()
-
-    def gamelines_to_paragraphs(self, parts, selected):
-        """Convert the game parts into neater paragraphs, with formating.
-
-        @param parts: The game content
-        @param selected:
-            The number of the part that is selected and should be highlighted.
-        @rtype tuple
-        @return:
-            A tuple where the first element is a list with the lines that could
-            be printed, and the second is the first *row* that contains the
-            selected part.
-
-        """
-        # TODO: refactor this!
-
-        class Section(object):
-            def __init__(self, text):
-                self.text = text
-                self.selected = False
-
-            def __str__(self):
-                return self.text
-
-        class Paragraph(Section):
-            def __init__(self, text):
-                if isinstance(text, str):
-                    text = [Section(text)]
-                self.text = text
-                self.selected = False
-
-            def __str__(self):
-                return " ".join(str(s) for s in self.text)
-
-        class Header(Section):
-            def __init__(self, title):
-                self.selected = False
-                header = re.match("^(#+) (.*)", title.strip())
-                if not header.group:
-                    logger.warn("Unhandled title: %r", title)
-                    self.level = None
-                    self.title = title
-                else:
-                    self.level = header.group(1)
-                    self.title = header.group(2)
-
-            def __str__(self):
-                return self.title
-
-        class Instruction(Section):
-
-            instruct_text = 'INSTRUCT: '
-
-            def __init__(self, text):
-                text = text.strip()
-                if text.startswith(self.instruct_text):
-                    text = text[len(self.instruct_text):]
-                super().__init__(text)
-
-        # First, identity the sections, like paragraphs and headers
-        sections = []
-        past_text = []
-        for linenumber, chunk in enumerate(parts):
-            for row in chunk.splitlines():
-                # Empty row means a newline, which means a new paragraph:
-                if not row:
-                    if past_text:
-                        sections.append(Paragraph(past_text))
-                        past_text = []
-                elif row.strip().startswith('#'):
-                    if past_text:
-                        sections.append(Paragraph(past_text))
-                        past_text = []
-                    section = Header(row)
-                    if linenumber == selected:
-                        section.selected = True
-                    sections.append(section)
-                elif row.strip().startswith('INSTRUCT:'):
-                    if past_text:
-                        sections.append(Paragraph(past_text))
-                        past_text = []
-                    section = Instruction(row)
-                    if linenumber == selected:
-                        section.selected = True
-                    sections.append(section)
-                else:
-                    section = Section(row)
-                    if linenumber == selected:
-                        section.selected = True
-                    past_text.append(section)
-        if past_text:
-            sections.append(Paragraph(past_text))
-
-        # Then, print the sections out into the rows:
-        rows = []
-        first_row_selected = -1
-
-        for section in sections:
-            # Add an empty line between paragraphs (except the first)
-            if (isinstance(section, (Paragraph, Header, Instruction))
-                    and rows
-                    and rows[-1] != ""):
-                rows.append("")
-
-            if isinstance(section, Header):
-                if section.selected:
-                    if first_row_selected == -1:
-                        first_row_selected = len(rows)
-                    rows.append(("selected", str(section)))
-                else:
-                    rows.append(("chapter", str(section)))
-            elif isinstance(section, Instruction):
-                if section.selected:
-                    if first_row_selected == -1:
-                        first_row_selected = len(rows)
-                    rows.append(("selected", "I: " + str(section)))
-                else:
-                    rows.append(("instruction", "I: " + str(section)))
-            elif isinstance(section, Paragraph):
-                tmp = []
-                for txt in section.text:
-                    if txt.selected:
-                        if first_row_selected == -1:
-                            first_row_selected = len(rows)
-                        if tmp:
-                            tmp.append(("selected", " "))
-                        tmp.append(("selected", str(txt)))
-                    else:
-                        if tmp:
-                            tmp.append(("story", " "))
-                        tmp.append(("story", str(txt)))
-                rows.append(tmp)
-            else:
-                if section.selected:
-                    if first_row_selected == -1:
-                        first_row_selected = len(rows)
-                    rows.append(("selected", str(section)))
-                else:
-                    rows.append(("story", str(section)))
-
-        return rows, first_row_selected
 
 
 class DecorationButton(urwid.Button):
