@@ -120,7 +120,10 @@ class GUI(object):
         """Change the viewer to the game window"""
         self.event_reset.set()
         self.set_header(game.title)
-        self.story_box = StoryBox(game=game, choices=choices)
+        self.story_box = urwid.ScrollBar(
+            urwid.Padding(StoryBox(game=game, choices=choices), right=2),
+            thumb_char=urwid.ScrollBar.Symbols.LITE_SHADE,
+        )
         self.set_body(urwid.Padding(
             self.story_box,
             align="center",
