@@ -143,7 +143,7 @@ class Controller(object):
         else:
             self.gui.send_message("Failed to copy")
 
-    def edit_config(self, focused):
+    def edit_config(self, widget=None, focused=None):
         logger.info("Saving config")
         config.save_config(self.config)
         config.save_secrets(self.secrets)
