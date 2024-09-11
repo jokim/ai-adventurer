@@ -191,7 +191,7 @@ class GameController(object):
             "q": ("Quit and back to mainmenu", self.quit_game),
             "enter": ("Generate new line", self.next_line),
         }
-        self.game = Game(db=self.db, nlp=self.nlp, gameid=gameid)
+        self.game = Game(db=self.db, gameid=gameid)
 
     def quit_game(self, widget=None):
         self.controller.start_mainmenu()
@@ -221,7 +221,8 @@ class GameController(object):
     def next_line(self, widget):
         """Generate new text"""
         self.gui.send_message("Generating more text...")
-        self.game.generate_next_lines()
+        more = self.nlp.prompt_for_next_lines(self.game)
+        self.game.add_lines(more)
         self.gui.story_box.set_selection(-1)
         self.gui.send_message("New text generated")
 
@@ -229,9 +230,18 @@ class GameController(object):
         """Regenerate chosen line"""
         self.gui.send_message("Retry selected text")
         selected = self.gui.story_box.selected_part
-        self.game.retry_active_line(selected)
-        self.gui.story_box.load_text()
-        self.gui.send_message("Part regenerated, if it was the last…")
+
+        # Only support retrying last line for now. Haven't implemented changing
+        # inside of the chain yet.
+        if selected is None or selected == len(self.game.lines) - 1:
+            lineid = len(self.game.lines) - 1
+            more = self.nlp.prompt_for_next_lines(self.game)
+            self.game.delete_line(lineid)
+            self.game.add_lines(more)
+            self.gui.send_message("Part regenerated, if it was the last…")
+            self.gui.story_box.load_text()
+        else:
+            self.gui.send_message("Can only retry last part")
 
     def add_line_dialog(self, widget):
         """Start dialog for getting a new line of the story"""
@@ -318,9 +328,8 @@ class GameController(object):
 class Game(object):
     """The game modeller"""
 
-    def __init__(self, db, nlp, gameid=None):
+    def __init__(self, db, gameid=None):
         self.db = db
-        self.nlp = nlp
 
         if gameid:
             self.gameid = gameid
@@ -359,26 +368,8 @@ class Game(object):
         self.lines.append(text)
         self.save()
 
-    def generate_next_lines(self):
-        more = self.nlp.prompt_for_next_lines(self)
-        self.add_lines(more)
-        self.save()
-        return more
-
     def delete_line(self, lineid):
         del self.lines[lineid]
-        self.save()
-
-    def retry_active_line(self, lineid):
-        if lineid is None or lineid == len(self.lines) - 1:
-            # Only support retrying last line for now. Haven't implemented
-            # changing inside of the chain yet.
-            lineid = len(self.lines) - 1
-            self.delete_line(lineid)
-            return self.generate_next_lines()
-        else:
-            print("Can't retry inside, per now")
-            logger.warning("Can't retry inside chain, per now")
         self.save()
 
     def change_line(self, lineid, new_text):
