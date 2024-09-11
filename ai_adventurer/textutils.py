@@ -176,7 +176,13 @@ class Story(object):
             (<palette-name>, <text>)
 
         So here you get a list of such tuples. Note that some lists even
-        consists of lists themselves.
+        consists of lists themselves. But they should all be able to be
+        included in a widget.
+
+        @rtype: tuple
+        @return:
+            First element contains the urwid elements, the second the first
+            element that is selected.
 
         """
         rows = []
@@ -208,7 +214,7 @@ class Story(object):
                 for txt in section.text:
                     if txt.selected:
                         if first_row_selected == -1:
-                            first_row_selected = len(rows)
+                            first_row_selected = len(rows) + len(tmp)
                         if tmp:
                             tmp.append(("selected", " "))
                         tmp.append(("selected", str(txt)))

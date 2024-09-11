@@ -407,19 +407,42 @@ class StoryBox(urwid.Scrollable):
             else:
                 self.set_scrollpos(newpos)
 
-    def load_text(self):
-        """Load in the games story"""
+    def _get_story_widgets(self, width):
+        """Return the story as a list of widgets.
+
+        @param width:
+            The width, or number of columns. Related to be able to return the
+            correct row number.
+
+        @rtype: tuple
+        @return:
+            First element is the list of widgets. The second is what row the
+            selected part of the story begins at.
+        """
         widgets = []
         story = tu.Story(self.game.lines, self.selected_part)
-        rows, select_start = story.convert_to_urwid()
-        row_selected_start = 0
-        for i, row in enumerate(rows):
-            t = urwid.Text(row)
-            if i <= select_start:
-                row_selected_start += len(textwrap.wrap(t.text))
+        elements, first_selected = story.convert_to_urwid()
+        first_select_row = 0
+        # print(f"Start at {first_select_row}, and first element is {first_selected}")
+        for i, element in enumerate(elements):
+            t = urwid.Text(element)
+            # print(f"{i} - Got text {t}")
+            if i < (first_selected - 1):
+                first_select_row += len(textwrap.wrap(t.text or ".",
+                                                      width=width))
+                # print(f"{i} - now up to {first_select_row}")
             widgets.append(t)
+        # print(f"Ending at {first_select_row}")
+        return widgets, first_select_row
+
+    def load_text(self):
+        """Load in the games story"""
+        width = 70
+        if self._cached_size:
+            width, _ = self._cached_size
+        widgets, first_selected_row = self._get_story_widgets(width)
         self.content.original_widget = urwid.Pile(widgets)
-        return row_selected_start
+        return first_selected_row
 
     def open_help_popup(self):
         """View a popup with the key shortcuts"""

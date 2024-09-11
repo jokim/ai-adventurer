@@ -102,3 +102,52 @@ def test_story_urwid():
     u, first = s.convert_to_urwid()
     print(u)
     assert u == [[("story", "One"), ("story", " "), ("story", "Two")]]
+    assert first == -1
+
+
+def test_story_urwid_select_first():
+    s = tu.Story(("One", "Two"), selected_part=0)
+    u, first = s.convert_to_urwid()
+    print(u)
+    assert u == [[("selected", "One"), ("story", " "), ("story", "Two")]]
+    assert first == 0
+
+
+def test_story_urwid_select_second():
+    s = tu.Story(("One", "Two"), selected_part=1)
+    u, first = s.convert_to_urwid()
+    print(u)
+    # For now, the space between elements are also selected, but might not want
+    # that?
+    assert u == [[("story", "One"), ("selected", " "), ("selected", "Two")]]
+    assert first == 1
+
+
+def test_story_urwid_select_third():
+    s = tu.Story(("One", "Two", "Three"), selected_part=2)
+    u, first = s.convert_to_urwid()
+    print(u)
+    # For now, the space between elements are also selected, but might not want
+    # that?
+    assert u == [[("story", "One"),
+                  ("story", " "),
+                  ("story", "Two"),
+                  ("selected", " "),
+                  ("selected", "Three"),
+                  ]]
+    assert first == 3
+
+
+def test_story_urwid_select_with_paragraphs():
+    s = tu.Story(("One\n\n", "Two\n\n", "Three\n\n"), selected_part=2)
+    u, first = s.convert_to_urwid()
+    print(u)
+    # For now, the space between elements are also selected, but might not want
+    # that?
+    assert u == [[("story", "One")],
+                 "",
+                 [("story", "Two")],
+                 "",
+                 [("selected", "Three")],
+                 ]
+    assert first == 4

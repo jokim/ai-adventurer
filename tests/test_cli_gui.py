@@ -5,6 +5,7 @@ import urwid
 
 from ai_adventurer import gui_urwid
 from ai_adventurer import run
+from ai_adventurer import db
 
 
 def test_load():
@@ -47,10 +48,80 @@ def test_exit_input():
         g.unhandled_input(key="q")
 
 
+def test_storybox_empty():
+    game = run.Game(db.MockDatabase())
+    s = gui_urwid.StoryBox(game, {})
+    s.move_selection_up()
+    s.move_selection_up()
+    s.move_selection_down()
+    s.load_text()
+    s.move_selection_down()
+    s.move_selection_down()
+    s.set_selection(999)
+    s.set_selection(1)
+    s.load_text()
+
+
+def test_storybox_oneliner():
+    game = run.Game(db.MockDatabase())
+    game.add_lines("This is a sentence")
+    s = gui_urwid.StoryBox(game, {})
+    row = s.load_text()
+    assert row == 0
+    assert len(s.content.original_widget) > 0
+
+
+def test_storybox_select_first_row():
+    game = run.Game(db.MockDatabase())
+    game.add_lines("This is a short sentence")
+    s = gui_urwid.StoryBox(game, {})
+    s.set_selection(0)
+    widgets, row = s._get_story_widgets(width=70)
+    assert row == 0
+    assert len(widgets) == 1
+
+
+def test_storybox_select_second_row():
+    game = run.Game(db.MockDatabase())
+    game.add_lines("One.")
+    game.add_lines("Two.")
+    s = gui_urwid.StoryBox(game, {})
+    s.set_selection(1)
+    widgets, row = s._get_story_widgets(width=70)
+    assert len(widgets) == 1
+    assert row == 0
+
+
+def test_storybox_select_longer():
+    game = run.Game(db.MockDatabase())
+    game.add_lines("# Title")
+    game.add_lines("First paragraph.\n\n")
+    game.add_lines("Second paragraph.\n\n")
+    s = gui_urwid.StoryBox(game, {})
+    s.set_selection(2)
+    widgets, row = s._get_story_widgets(width=70)
+    assert len(widgets) == 5
+    assert row == 3
+
+
+def test_storybox_select_longer_and_combined():
+    """Test both with many widgets, and some elements on the same row"""
+    game = run.Game(db.MockDatabase())
+    game.add_lines("# Title")
+    game.add_lines("First.")
+    game.add_lines("And a tail.\n\n")
+    game.add_lines("Second paragraph.\n\n")
+    s = gui_urwid.StoryBox(game, {})
+    s.set_selection(2)
+    widgets, row = s._get_story_widgets(width=70)
+    assert len(widgets) == 5
+    assert row == 2
+
+
 @pytest.mark.skip(reason="Missing implementation")
 def test_convert_simple_line():
-    gamec = run.GameController(db.Database(), "TODO")
-    s = gui_urwid.StoryBox(game, choices)
+    game = run.Game(db.MockDatabase())
+    s = gui_urwid.StoryBox(game, {})
     lines = ["This is a sentence",]
     assert s.gamelines_to_paragraphs(lines, None) == lines
 

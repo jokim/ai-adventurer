@@ -38,7 +38,7 @@ def get_mock_handler():
 def test_game_object(tmp_path):
     db = get_empty_db(tmp_path)
     assert len(db.get_games()) == 0
-    game = run.Game(db=db, nlp=get_mock_handler())
+    game = run.Game(db=db)
     assert game.gameid == 1
     assert len(db.get_games()) == 1
     game.save()
@@ -46,7 +46,7 @@ def test_game_object(tmp_path):
 
 def test_game_object_title(tmp_path):
     db = get_empty_db(tmp_path)
-    game = run.Game(db=db, nlp=get_mock_handler())
+    game = run.Game(db=db)
     test_str = "Apple"
     game.set_title(test_str)
     assert game.title == test_str
@@ -55,7 +55,7 @@ def test_game_object_title(tmp_path):
 
 def test_game_object_details(tmp_path):
     db = get_empty_db(tmp_path)
-    game = run.Game(db=db, nlp=get_mock_handler())
+    game = run.Game(db=db)
     test_str = "This is a story"
     game.set_details(test_str)
     assert game.details == test_str
@@ -64,7 +64,7 @@ def test_game_object_details(tmp_path):
 
 def test_game_object_instructions(tmp_path):
     db = get_empty_db(tmp_path)
-    game = run.Game(db=db, nlp=get_mock_handler())
+    game = run.Game(db=db)
     test_str = "You are a test"
     game.set_instructions(test_str)
     assert game.instructions == test_str
@@ -73,7 +73,7 @@ def test_game_object_instructions(tmp_path):
 
 def test_game_object_chunks(tmp_path):
     db = get_empty_db(tmp_path)
-    game = run.Game(db=db, nlp=get_mock_handler())
+    game = run.Game(db=db)
     assert not game.lines
     test_str = "This is a sentence."
     game.add_lines(test_str)

@@ -6,6 +6,7 @@
 from typing import List
 from typing import Optional
 import logging
+import tempfile
 
 import sqlalchemy
 import sqlalchemy.orm as orm
@@ -175,3 +176,12 @@ class Database(object):
 
         db_game.lines = line_struct
         session.commit()
+
+
+class MockDatabase(Database):
+    """Mocking the database by creating a temp sqlite file."""
+
+    def __init__(self, db_file=None):
+        mock_fd, mock_filename = tempfile.mkstemp(suffix='.sqlite')
+        path = "sqlite:///" + mock_filename
+        super().__init__(db_file=path)
