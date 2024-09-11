@@ -123,12 +123,13 @@ class GUI(object):
         """Change the viewer to the game window"""
         self.event_reset.set()
         self.set_header(game.title)
-        self.story_box = urwid.ScrollBar(
-            urwid.Padding(StoryBox(game=game, choices=choices), right=2),
+        self.story_box = StoryBox(game=game, choices=choices)
+        body = urwid.ScrollBar(
+            urwid.Padding(self.story_box, right=2),
             thumb_char=urwid.ScrollBar.Symbols.LITE_SHADE,
         )
         self.set_body(urwid.Padding(
-            self.story_box,
+            body,
             align="center",
             width=70,
         ))
@@ -423,7 +424,8 @@ class StoryBox(urwid.Scrollable):
         story = tu.Story(self.game.lines, self.selected_part)
         elements, first_selected = story.convert_to_urwid()
         first_select_row = 0
-        # print(f"Start at {first_select_row}, and first element is {first_selected}")
+        # print(f"Start at {first_select_row}, and first element is
+        # {first_selected}")
         for i, element in enumerate(elements):
             t = urwid.Text(element)
             # print(f"{i} - Got text {t}")
