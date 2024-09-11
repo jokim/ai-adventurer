@@ -49,6 +49,14 @@ class Paragraph(Section):
     """
 
     def __init__(self, text):
+        """Init
+
+        @type text: str, list of str or list of Section
+        @param text:
+            The input text should be a list of Section objects. But for
+            simplicity a str is accepted and converted.
+
+        """
         if isinstance(text, str):
             text = [Section(text)]
         self.text = text
@@ -56,6 +64,15 @@ class Paragraph(Section):
 
     def __str__(self):
         return " ".join(str(s) for s in self.text)
+
+    def __repr__(self):
+        txt = self._get_short_text(str(self))
+        selected = ""
+        if self.selected:
+            selected = " Selected!"
+        nr_ele = len(self.text)
+        cls_name = self.__class__.__name__
+        return f"<{cls_name} elements={nr_ele} '{txt}'{selected}>"
 
 
 class Header(Section):
@@ -102,7 +119,7 @@ class Story(object):
         """Convert the game parts into neater paragraphs, with formating.
 
         @param parts: The game content
-        @param selected:
+        @param selected_part:
             The number of the part that is selected and should be highlighted.
         @rtype tuple
         @return:

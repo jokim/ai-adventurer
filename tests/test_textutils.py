@@ -38,7 +38,13 @@ def test_story():
     s = tu.Story(("One", "Two"))
     assert s
     print(s.sections)
-    assert len(s.sections) > 0
+    assert len(s.sections) == 1
+    s = tu.Story(("One\n", "Two"))
+    print(s.sections)
+    assert len(s.sections) == 1
+    s = tu.Story(("One\n\n", "Two"))
+    print(s.sections)
+    assert len(s.sections) == 2
 
 
 def test_story_simple_title():
@@ -51,7 +57,7 @@ def test_story_simple_title():
 
 def test_story_selected_first():
     s = tu.Story((
-        "# Title",
+        "# Title\n",
         "And a paragraph",
     ), selected_part=0)
     print(s.sections)
@@ -62,29 +68,33 @@ def test_story_selected_first():
 
 def test_story_selected_second():
     s = tu.Story((
-        "# Title",
+        "# Title\n\n",
         "And a paragraph",
     ), selected_part=1)
     print(s.sections)
     assert isinstance(s.sections[1], tu.Paragraph)
     assert s.sections[0].selected is False
     print(s.sections[1])
-    assert s.sections[1].selected is True
+    # It's not the paragraph in whole that is selected, but its first (and
+    # only) sub section:
+    assert s.sections[1].selected is False
+    assert s.sections[1].text[0].selected is True
 
 
 def test_story_selected_third():
     s = tu.Story((
-        "# Title",
-        "",
-        "A paragraph",
-        "",
-        "Another one",
-    ), selected_part=4)
+        "# Title\n",
+        "\n",
+        "A paragraph\n",
+        "and more to the previous one.",
+    ), selected_part=3)
     print(s.sections)
+    assert len(s.sections) == 2
     assert isinstance(s.sections[1], tu.Paragraph)
-    assert s.sections[0].selected is False
-    print(s.sections[1])
-    assert s.sections[1].selected is True
+    assert s.sections[1].selected is False
+    assert len(s.sections[1].text) == 2
+    assert s.sections[1].text[0].selected is False
+    assert s.sections[1].text[1].selected is True
 
 
 def test_story_urwid():
