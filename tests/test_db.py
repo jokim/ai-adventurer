@@ -70,3 +70,18 @@ def test_get_lines(tmp_path):
     g2 = db.get_game(g.gameid)
     assert g2["gameid"] == g.gameid
     assert g2["lines"] == g.lines
+
+
+def test_get_lines_from_gamelister(tmp_path):
+    db = get_empty_db(tmp_path)
+    g = run.Game(db)
+    g.add_lines("Three. ")
+    g.add_lines("Four. ")
+    g.set_title("One...")
+    g.add_lines("Five. ")
+    g.add_lines("Six. ")
+    g.add_lines("Seven. ")
+    games = db.get_games()
+    assert len(games) == 1
+    assert games[0]["gameid"] == g.gameid
+    assert games[0]["lines"] == g.lines

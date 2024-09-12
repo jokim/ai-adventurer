@@ -111,19 +111,23 @@ class Database(object):
         ):
             return game
 
+    def _convert_lines(self, dblines):
+        """Get a simpler, sorted list with lines, without its metadata"""
+        lines = []
+        for line in sorted(dblines, key=lambda k: k.lineid):
+            # TODO: make sure it's sorted!
+            lines.append(line.text)
+        return lines
+
     def get_game(self, gameid, _session=None):
         """Get a given games data"""
         game = self._get_game(gameid=gameid, _session=_session)
-        lines = []
-        for line in sorted(game.lines, key=lambda k: k.lineid):
-            # TODO: make sure it's sorted!
-            lines.append(line.text)
         return {
             "gameid": game.gameid,
             "title": game.title,
             "instructions": game.instructions,
             "details": game.details,
-            "lines": lines,
+            "lines": self._convert_lines(game.lines),
         }
         # How to also return Lines for the given Game?
 
@@ -139,6 +143,7 @@ class Database(object):
                     "title": game.title,
                     "instructions": game.instructions,
                     "details": game.details,
+                    "lines": self._convert_lines(game.lines),
                 }
             )
         return ret
