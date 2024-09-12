@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 
-import pytest
-
 from ai_adventurer import db
+from ai_adventurer import run
 
 
 def test_empty_db(tmp_path):
@@ -29,6 +28,19 @@ def test_new_game(tmp_path):
     assert ret["title"] == "Test"
 
 
+def test_new_game_through_model(tmp_path):
+    db = get_empty_db(tmp_path)
+    g = run.Game(db)
+    g.set_title("NewTest")
+    games = db.get_games()
+    assert len(games) == 1
+    assert games[0]["title"] == "NewTest"
+    assert games[0]["gameid"] == g.gameid
+    ret = db.get_game(g.gameid)
+    assert ret["gameid"] == g.gameid
+    assert ret["title"] == "NewTest"
+
+
 def test_delete_game(tmp_path):
     db = get_empty_db(tmp_path)
     gameid = db.create_new_game("Test")
@@ -36,8 +48,25 @@ def test_delete_game(tmp_path):
     assert len(db.get_games()) == 0
 
 
-@pytest.mark.skip("Not implemented yet")
 def test_save_lines(tmp_path):
     db = get_empty_db(tmp_path)
-    db.create_new_game("Test")
-    # TODO: unfinished
+    g = run.Game(db)
+    g.add_lines("One. ")
+    g.add_lines("Two. ")
+    lines = db.get_lines(g.gameid)
+    assert len(lines) == 2
+    assert lines == g.lines
+
+
+def test_get_lines(tmp_path):
+    db = get_empty_db(tmp_path)
+    g = run.Game(db)
+    g.add_lines("Three. ")
+    g.add_lines("Four. ")
+    g.set_title("One...")
+    g.add_lines("Five. ")
+    g.add_lines("Six. ")
+    g.add_lines("Seven. ")
+    g2 = db.get_game(g.gameid)
+    assert g2["gameid"] == g.gameid
+    assert g2["lines"] == g.lines
