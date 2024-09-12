@@ -84,12 +84,8 @@ class Controller(object):
 
         games = []
         for game in self.db.get_games():
-            games.append({
-                'gameid': game['gameid'],
-                'title': game['title'],
-                'length': 'TODO',
-                'callback': self.load_game,
-            })
+            game['callback'] = self.load_game
+            games.append(game)
         self.gui.load_gamelister(games, choices)
 
     def load_game(self, widget, user_data, focused=None):

@@ -189,7 +189,15 @@ class GUI(object):
         """Load the game overview"""
         self.event_reset.set()
         # urwid.SimpleFocusListWalker(gamelist)))
-        self.set_body(GameLister(games=games, choices=choices))
+        lineformat = "{title:50} - {lenlines:>6}"
+        self.set_body(urwid.Frame(
+            body=GameLister(games=games, choices=choices,
+                            lineformat=lineformat),
+            header=urwid.AttrMap(urwid.Padding(
+                urwid.Text(lineformat.format(title="Title",
+                                             lenlines="Chunks")),
+                left=2), "title"),
+        ))
 
     def start_input_edit_text(self, old_text):
         """Ask user to edit given text and return the new one.
@@ -481,15 +489,19 @@ class DecorationButton(urwid.Button):
 class GameLister(Menu):
     """The list of existing stories to load or manage"""
 
-    def __init__(self, choices, games):
+    def __init__(self, choices, games, lineformat="{title} - {lenlines}"):
         self.games = games
+        self.lineformat = lineformat
         super().__init__(choices=choices)
 
     def generate_body(self):
         gamelist = []
         for game in self.games:
-            button = DecorationButton(game['title'], on_press=game['callback'],
-                                      user_data=game, left="", right="")
+            button = DecorationButton(
+                self.lineformat.format(title=game['title'],
+                                       lenlines=len(game['lines']),
+                                       game=game),
+                on_press=game['callback'], user_data=game, left="", right="")
             button.gamedata = game
             gamelist.append(urwid.AttrMap(button, None, focus_map="reversed"))
         return gamelist
