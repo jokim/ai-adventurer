@@ -124,14 +124,16 @@ class GUI(object):
         self.event_reset.set()
         self.set_header(game.title)
         self.story_box = StoryBox(game=game, choices=choices)
-        body = urwid.ScrollBar(
-            urwid.Padding(self.story_box, right=2),
-            thumb_char=urwid.ScrollBar.Symbols.LITE_SHADE,
-        )
+        # body = urwid.ScrollBar(
+        #     urwid.Padding(self.story_box, right=2),
+        #     thumb_char=urwid.ScrollBar.Symbols.LITE_SHADE,
+        #     width=1,
+        # )
         self.set_body(urwid.Padding(
-            body,
+            # body,
+            self.story_box,
             align="center",
-            width=70,
+            width=73,
         ))
 
     def load_mainmenu(self, choices):
