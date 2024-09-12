@@ -124,6 +124,8 @@ class GUI(object):
         self.event_reset.set()
         self.set_header(game.title)
         self.story_box = StoryBox(game=game, choices=choices)
+        # TODO: When adding the ScrollBar, I got out of bounds exceptions from
+        # urwid.widget.widget.validate_size(). Why?
         # body = urwid.ScrollBar(
         #     urwid.Padding(self.story_box, right=2),
         #     thumb_char=urwid.ScrollBar.Symbols.LITE_SHADE,
