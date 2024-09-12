@@ -188,13 +188,11 @@ class GameController(object):
             "s": ("Edit the story details", self.edit_story_details),
             "i": ("Add instruction to the story", self.add_instruction_dialog),
             "I": ("Edit system instructions", self.edit_system_instructions),
-            "q": ("Quit and back to mainmenu", self.quit_game),
+            "L": ("Load another game", self.controller.start_game_lister),
+            "q": ("Quit and back to mainmenu", self.controller.start_mainmenu),
             "enter": ("Generate new line", self.next_line),
         }
         self.game = Game(db=self.db, gameid=gameid)
-
-    def quit_game(self, widget=None):
-        self.controller.start_mainmenu()
 
     def start_new_game(self):
         """Start the initial dialog for creating a new story"""
