@@ -229,8 +229,8 @@ class GameController(object):
         # inside of the chain yet.
         if selected is None or selected == len(self.game.lines) - 1:
             lineid = len(self.game.lines) - 1
-            more = self.nlp.prompt_for_next_lines(self.game)
             self.game.delete_line(lineid)
+            more = self.nlp.prompt_for_next_lines(self.game)
             self.game.add_lines(more)
             self.gui.send_message("Part regenerated, if it was the last…")
             self.gui.story_box.load_text()

@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 
-from ai_adventurer import run
-from ai_adventurer import db
-from ai_adventurer import nlp
 from ai_adventurer import config
+from ai_adventurer import db
+from ai_adventurer import gui_urwid
+from ai_adventurer import nlp
+from ai_adventurer import run
 
 
 # Main controller
@@ -12,11 +13,48 @@ def test_controller_load():
     run.Controller(config=config._get_default_config(),
                    secrets=config._get_default_secrets())
 
+
+def get_mock_controller():
+    return run.Controller(config=config._get_default_config(),
+                          secrets=config._get_default_secrets())
+
+
 # Game controller
 
-# TODO
+def test_gamecontroller_load():
+    run.GameController(db=db.MockDatabase(),
+                       nlp=nlp.NLPHandler("mock",
+                                          config._get_default_secrets()),
+                       gui=gui_urwid.GUI(),
+                       controller=get_mock_controller())
 
-# Game object
+
+def get_mock_gamecontroller():
+    return run.GameController(
+        db=db.MockDatabase(),
+        nlp=nlp.NLPHandler("mock", config._get_default_secrets()),
+        gui=gui_urwid.GUI(),
+        controller=get_mock_controller()
+    )
+
+
+def test_start_game():
+    gc = get_mock_gamecontroller()
+    # gc.start_new_game()
+    gc.start_new_game_with_concept(None, "Test")
+    print(gc.game.lines)
+    assert len(gc.game.lines) > 0
+    # TODO: use pytests `patch` and `.assert_called_once`
+
+
+def test_retry_lines():
+    gc = get_mock_gamecontroller()
+    # gc.start_new_game()
+    gc.start_new_game_with_concept(None, "Test")
+    lines = gc.game.lines.copy()
+    gc.retry_line(None)
+    # TODO: use pytests `patch` and `.assert_called_once`
+    assert len(lines) == len(gc.game.lines)
 
 
 def get_empty_db(tmp_path):
