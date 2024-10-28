@@ -503,6 +503,7 @@ nlp_models = {
     "gpt-4o": OpenAINLPClient,
     "open-mistral-nemo": MistralNLP,
     "mistral-large-latest": MistralNLP,
+    "mistral-small-latest": MistralNLP,
     "mock": MockNLPClient,
     "mock-online": MockOnlineNLPClient,
     # TODO: would probably also need a file name

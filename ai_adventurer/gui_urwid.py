@@ -103,7 +103,7 @@ class GUI(object):
             text = " - ".join((text, self.game_title))
         self.header_text.set_text(("header", text))
 
-    def _get_body(self, body, footer=True):
+    def _generate_body(self, body, footer=True):
         """Generate the main content of the screen"""
         if footer:
             footer = urwid.AttrMap(self.footer_text, "footer")
@@ -117,7 +117,7 @@ class GUI(object):
         )
 
     def set_body(self, body, footer=True):
-        self.loop.widget = self._get_body(body=body, footer=footer)
+        self.loop.widget = self._generate_body(body=body, footer=footer)
 
     def load_game(self, game, choices):
         """Change the viewer to the game window"""
@@ -189,15 +189,24 @@ class GUI(object):
         """Load the game overview"""
         self.event_reset.set()
         # urwid.SimpleFocusListWalker(gamelist)))
-        lineformat = "{title:50} - {lenlines:>6}"
+        if not hasattr(self, '_gamelister'):
+            self._gamelister = self._generate_gamelister(games, choices)
+        else:
+            self._gamelister.games = games
+            self._gamelister.choices = choices
+            self._gamelister.generate_body()
+
         self.set_body(urwid.Frame(
-            body=GameLister(games=games, choices=choices,
-                            lineformat=lineformat),
+            body=self._gamelister,
             header=urwid.AttrMap(urwid.Padding(
-                urwid.Text(lineformat.format(title="Title",
-                                             lenlines="Chunks")),
+                urwid.Text(self._gamelister.lineformat.format(
+                    title="Title", lenlines="Chunks")),
                 left=2), "title"),
         ))
+
+    def _generate_gamelister(self, games, choices):
+        lineformat = "{title:50} - {lenlines:>6}"
+        return GameLister(games=games, choices=choices, lineformat=lineformat)
 
     def start_input_edit_text(self, old_text):
         """Ask user to edit given text and return the new one.
@@ -327,11 +336,16 @@ class Menu(urwid.ListBox):
             return
         return super().keypress(size, key)
 
-    def move_up(self, focused):
+    def move_up(self, focused=None):
         self.set_focus(max(0, self.focus_position - 1))
 
-    def move_down(self, focused):
+    def move_down(self, focused=None):
         self.set_focus(min(self.focus_position + 1, len(self) - 1))
+
+    def set_focus_position(self, position):
+        if position < 0:
+            position = 0
+        self.set_focus(min(position, len(self) - 1))
 
 
 class MainMenu(Menu):
@@ -490,6 +504,23 @@ class GameLister(Menu):
     """The list of existing stories to load or manage"""
 
     def __init__(self, choices, games, lineformat="{title} - {lenlines}"):
+        """Init
+
+        @type games: list or tuple
+        @param games:
+            A list where each elements has at least the params::
+                {
+                    'title': 'Game title',
+                    'lines': ['Intro', 'Sentence 2', ...], # The lines
+                    'callback': callback, # executes when game is chosen
+                }
+
+            You could add more if `lineformat` inclues more.
+
+        @param lineformat:
+            A formatter string to output in the list.
+
+        """
         self.games = games
         self.lineformat = lineformat
         super().__init__(choices=choices)

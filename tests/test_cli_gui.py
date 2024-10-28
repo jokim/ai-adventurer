@@ -224,3 +224,48 @@ def test_convert_title2():
     lines = ["# A title"]
     answer = ["A title"]
     assert gw.gamelines_to_paragraphs(lines, None) == answer
+
+
+def test_simple_menu():
+    def test_call(data):
+        print(f"Returned: {data}")
+
+    choices = {
+        'n': ("New", test_call),
+        'l': ("Load", test_call),
+    }
+
+    m = gui_urwid.Menu(choices)
+    m.move_up()
+    m.move_up()
+    m.move_down()
+    m.move_down()
+    m.move_down()
+    # TODO: check keyinput and assert test_call is called
+
+
+def test_gamelister_init():
+    def test_call(data):
+        print(f"Returned: {data}")
+
+    choices = {
+        'n': ("New", test_call),
+        'l': ("Load", test_call),
+    }
+    games = [
+        {'title': 'Game A',
+         'lines': ("One", "two", "three"),
+         'callback': test_call,
+         },
+        {'title': 'Game B',
+         'lines': ["One", "two", "three"],
+         'callback': test_call,
+         },
+        {'title': 'Game C',
+         'lines': ["One", "two"],
+         'callback': test_call,
+         },
+    ]
+    m = gui_urwid.GameLister(choices, games=games)
+    m.move_up()
+    m.move_up()

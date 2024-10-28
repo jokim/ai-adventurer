@@ -107,29 +107,34 @@ class Controller(object):
 
         self.gui.ask_confirm(question=f"Delete game {gameid} - '{title}'?",
                              callback=self.delete_game_confirmed,
-                             user_data=gameid)
+                             user_data=(gameid, focused))
 
     def delete_game_confirmed(self, widget, user_data):
-        gameid = user_data
+        gameid, focused = user_data
         logger.info(f"Deleting game {gameid}")
         self.db.delete_game(gameid)
         self.gui.send_message(f"Game {gameid} deleted")
         # Reload game list, but without resetting the widget, so focus is kept
-        games = []
-        for game in self.db.get_games():
-            games.append({
-                'gameid': game['gameid'],
-                'title': game['title'],
-                'length': 'TODO',
-                'callback': self.load_game,
-            })
-        # TODO: seems like I've not understood something here. How to just
-        # remove one line in the body?
-        old_pos = min(len(games) - 1,
-                      self.gui.loop.widget.base_widget.body.focus_position)
-        self.gui.loop.widget.base_widget.body.games = games
-        self.gui.loop.widget.base_widget.body.regenerate_body()
-        self.gui.loop.widget.base_widget.body.set_focus(old_pos)
+        return self.start_game_lister(widget=widget)
+
+        # games = []
+        # for game in self.db.get_games():
+        #     games.append({
+        #         'gameid': game['gameid'],
+        #         'title': game['title'],
+        #         'length': 'TODO',
+        #         'callback': self.load_game,
+        #     })
+        # # TODO: seems like I've not understood something here. How to just
+        # # remove one line in the body?
+        # logger.debug(self.gui.loop.widget.base_widget.body.body)
+        # # old_pos = min(len(games) - 1,
+        # #
+        # int(self.gui.loop.widget.base_widget.body.focus_position))
+        # self.gui.loop.widget.base_widget.body.body.games = games
+        # self.gui.loop.widget.base_widget.body.body.regenerate_body()
+        # self.gui.loop.widget.base_widget.body.body.move_up()
+        # # self.gui.loop.widget.base_widget.body.set_focus(old_pos)
 
     def copy_game(self, widget, focused):
         gameid = focused.base_widget.gamedata["gameid"]
