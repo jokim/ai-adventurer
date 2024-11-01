@@ -1,22 +1,17 @@
 [tool.poetry]
 name = "ai-adventurer"
-version = "0.9.0"
+version = "0.9.1"
 description = "Supposedly a CLI story helper game using AI services, mostly just to test"
 authors = ["Joakim Hovlandsvåg <joakim.hovlandsvag@gmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "~3.11"
+python = "^3.12"
 openai = "^1.36.1"
 google-generativeai = "^0.7.2"
 sqlalchemy = "^2.0.31"
-transformers = "^4.43.3"
-tf-keras = "^2.17.0"
-torch = "^2.4.0"
-accelerate = "^0.33.0"
 mistralai = "^1.0.1"
 urwid = "^2.6.15"
-
 
 [tool.poetry.group.test.dependencies]
 pytest = "^8.3.2"
@@ -27,3 +22,12 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.black]
 line-length = 79
+
+[tool.poetry.group.localai]
+optional = true
+
+[tool.poetry.group.localai.dependencies]
+transformers = "^4.43"
+# tf-keras = "^2.17.0"
+# torch = "^2.4.0"
+accelerate = "^0.33"

@@ -14,9 +14,15 @@ included. Go see HuggingFace or Keras for that.
 ## Setup
 
 ```
-poetry env use python3.11
 poetry install
-poetry run ai_adventurer/run.py
+poetry run ai_adventurer/run.py --list-nlp-models
+```
+
+To also make use of models from HuggingFace, i.e. download them and use them
+locally, you also need to include the `localai` group:
+
+```
+poetry install --with localai
 ```
 
 ### Configuration
