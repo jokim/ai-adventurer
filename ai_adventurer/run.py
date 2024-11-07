@@ -330,6 +330,14 @@ class Game(object):
     def __init__(self, db, gameid=None):
         self.db = db
 
+        self.lines = []
+        self.instructions = ""
+        self.details = ""
+        self.title = "Title"
+        self.summary = ""
+        self.max_token_input = None
+        self.max_token_output = None
+
         if gameid:
             self.gameid = gameid
             db_game = self.db.get_game(gameid)
@@ -337,11 +345,9 @@ class Game(object):
             self.details = db_game["details"]
             self.title = db_game["title"]
             self.lines = self.db.get_lines(gameid)
+            self.max_token_input = db_game["max_token_input"]
+            self.max_token_output = db_game["max_token_output"]
         else:
-            self.lines = []
-            self.instructions = ""
-            self.details = ""
-            self.title = "Test 123"
             self.gameid = db.create_new_game(self.title)
 
     def save(self):
@@ -361,6 +367,10 @@ class Game(object):
         self.title = cleanup_text(new_title).strip()
         self.save()
 
+    def set_summary(self, new_summary):
+        self.summary = cleanup_text(new_summary).strip()
+        self.save()
+
     def add_lines(self, text):
         """Add text to continue the story."""
         text = cleanup_text(text)
@@ -373,6 +383,14 @@ class Game(object):
 
     def change_line(self, lineid, new_text):
         self.lines[lineid] = new_text
+        self.save()
+
+    def set_max_token_input(self, max_input):
+        self.max_token_input = int(max_input)
+        self.save()
+
+    def set_max_token_output(self, max_output):
+        self.max_token_output = int(max_output)
         self.save()
 
 

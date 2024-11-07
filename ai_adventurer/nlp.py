@@ -30,11 +30,24 @@ class NLPClient(object):
     """
 
     # Default max tokens to return from the NLP in prompts
-    max_tokens = 100  # about 25-50 words?
+    default_max_tokens_output = 150  # about 30-50 words?
 
-    def __init__(self, secrets=None, extra=None, modelname=None):
+    # Default max tokens to feed the NLP in prompts
+    default_max_tokens_input = 2000  # about 1000 words?
+
+    def __init__(self, secrets=None, extra=None, modelname=None,
+                 max_tokens_output=None, max_tokens_input=None):
         self.secrets = secrets
         self.modelname = modelname
+        if max_tokens_output is not None:
+            self.max_tokens_output = max_tokens_output
+        else:
+            self.max_tokens_output = self.default_max_tokens_output
+
+        if max_tokens_input is not None:
+            self.max_tokens_input = max_tokens_input
+        else:
+            self.max_tokens_input = self.default_max_tokens_input
 
     def prompt(self, text=None, instructions=None, max_tokens=None):
         """Subclass for the specifig NLP generation.
@@ -65,6 +78,7 @@ class MockNLPClient(NLPClient):
         super().__init__(*args, **kwargs)
 
     def prompt(self, text=None, instructions=None, max_tokens=None):
+        # TODO: change all `max_tokens` to max_tokens_output, and -input
         super().prompt(text, instructions)
         import random
 

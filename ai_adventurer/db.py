@@ -10,6 +10,7 @@ import tempfile
 
 import sqlalchemy
 import sqlalchemy.orm as orm
+from sqlalchemy import String
 
 
 logger = logging.getLogger(__name__)
@@ -26,9 +27,23 @@ class Game(_Base):
 
     gameid: orm.Mapped[int] = orm.mapped_column(primary_key=True)
     title: orm.Mapped[Optional[str]]
+
+    """The instructions to give to the AI NLP"""
     instructions: orm.Mapped[Optional[str]]
+
+    """The story details, controlling how the story should go"""
     details: orm.Mapped[Optional[str]]
 
+    """A summary of the story (ideally dynamically updated by the NLP)"""
+    summary: orm.Mapped[str] = orm.mapped_column(String, default='')
+
+    """A token limit per story interaction to fetch to the NLP model"""
+    max_token_output: orm.Mapped[Optional[int]]
+
+    """Max tokens to feed the NLP. Longer stories must e.g. be summarized."""
+    max_token_input: orm.Mapped[Optional[int]]
+
+    """The story itself"""
     lines: orm.Mapped[List["Line"]] = orm.relationship(
         back_populates="game", cascade="all, delete-orphan"
     )
@@ -128,6 +143,9 @@ class Database(object):
             "instructions": game.instructions,
             "details": game.details,
             "lines": self._convert_lines(game.lines),
+            "max_token_input": game.max_token_input,
+            "max_token_output": game.max_token_output,
+            "summary": game.summary,
         }
         # How to also return Lines for the given Game?
 
@@ -144,6 +162,9 @@ class Database(object):
                     "instructions": game.instructions,
                     "details": game.details,
                     "lines": self._convert_lines(game.lines),
+                    "max_token_input": game.max_token_input,
+                    "max_token_output": game.max_token_output,
+                    "summary": game.summary,
                 }
             )
         return ret
@@ -172,6 +193,11 @@ class Database(object):
         db_game.instructions = game.instructions
         db_game.title = game.title
         db_game.details = game.details
+        db_game.summary = game.summary
+        if hasattr(game, "max_token_input"):
+            db_game.max_token_input = game.max_token_input
+        if hasattr(game, "max_token_output"):
+            db_game.max_token_output = game.max_token_output
 
         # This blindly overwrites the existing lines. Probably a better way.
         line_struct = []

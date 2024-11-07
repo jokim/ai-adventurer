@@ -85,3 +85,35 @@ def test_get_lines_from_gamelister(tmp_path):
     assert len(games) == 1
     assert games[0]["gameid"] == g.gameid
     assert games[0]["lines"] == g.lines
+
+
+def test_game_summary(tmp_path):
+    db = get_empty_db(tmp_path)
+    g = run.Game(db)
+    assert g.summary == ""
+    newgameid = db.create_new_game("Test of summary")
+    ret = db.get_game(newgameid)
+    assert ret["summary"] == ""
+
+
+def test_game_summary_edit(tmp_path):
+    db = get_empty_db(tmp_path)
+    g = run.Game(db)
+    summary = "Just a very short story"
+    g.set_summary(summary)
+    assert g.summary == summary
+    ret = db.get_game(g.gameid)
+    assert ret["summary"] == summary
+
+
+def test_game_max_tokens(tmp_path):
+    db = get_empty_db(tmp_path)
+    g = run.Game(db)
+    g.set_max_token_input(99)
+    assert g.max_token_input == 99
+    g.set_max_token_output(98)
+    assert g.max_token_output == 98
+
+    ret = db.get_game(g.gameid)
+    assert ret["max_token_input"] == 99
+    assert ret["max_token_output"] == 98
