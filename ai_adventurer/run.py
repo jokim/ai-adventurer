@@ -139,9 +139,10 @@ class Controller(object):
     def copy_game(self, widget, focused):
         gameid = focused.base_widget.gamedata["gameid"]
         logger.info(f"Copying game {gameid}")
-        if self.db.copy_game(gameid):
-            self.gui.send_message("Game copied")
-        else:
+        try:
+            newid = self.db.copy_game(gameid)
+            self.gui.send_message(f"Game copied, new id: {newid}")
+        except Exception:
             self.gui.send_message("Failed to copy")
 
     def edit_config(self, widget=None, focused=None):

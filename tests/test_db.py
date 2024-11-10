@@ -117,3 +117,14 @@ def test_game_max_tokens(tmp_path):
     ret = db.get_game(g.gameid)
     assert ret["max_token_input"] == 99
     assert ret["max_token_output"] == 98
+
+
+def test_game_copy(tmp_path):
+    db = get_empty_db(tmp_path)
+    g = run.Game(db)
+    g.set_title("CopyTest")
+    newid = db.copy_game(g.gameid)
+
+    newgame = db.get_game(newid)
+    assert newgame.title == "CopyTest"
+    # TODO: check adding lines etc
