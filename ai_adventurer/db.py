@@ -85,7 +85,7 @@ class Database(object):
             self._db_file = default_db_file
 
         self._engine = sqlalchemy.create_engine(self._db_file)
-        _Base.metadata.create_all(self._engine)
+        _Base.metadata.create_all(self._engine, checkfirst=True)
 
     def create_new_game(self, title=""):
         """Create a new game in the db"""
