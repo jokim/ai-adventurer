@@ -49,7 +49,7 @@ class NLPClient(object):
         else:
             self.max_tokens_input = self.default_max_tokens_input
 
-    def prompt(self, text=None, instructions=None, max_tokens=None):
+    def prompt(self, text=None, instructions=None, max_tokens_output=None):
         """Subclass for the specifig NLP generation.
 
         Adds the previous dialog to the prompt, for giving context.
@@ -77,9 +77,8 @@ class MockNLPClient(NLPClient):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def prompt(self, text=None, instructions=None, max_tokens=None):
-        # TODO: change all `max_tokens` to max_tokens_output, and -input
-        super().prompt(text, instructions)
+    def prompt(self, text=None, instructions=None, max_tokens_output=None):
+        super().prompt(text, instructions, max_tokens_output=max_tokens_output)
         import random
 
         response = random.choice(self.replies)
@@ -101,27 +100,28 @@ class LocalNLPClient(NLPClient):
         model = keras.saving.load_model(keras_file, compile=True)
         return model
 
-    def prompt(self, text, instructions=None, max_tokens=None):
+    def prompt(self, text, instructions=None, max_tokens_output=None):
         super().prompt(text, instructions)
         text = self.convert_to_prompt(text, role="user")
         if instructions:
             text = instructions + " " + text
 
-        output = self._generate(text, max_tokens=max_tokens)
+        output = self._generate(text, max_tokens_output=max_tokens_output)
 
         # Remove the pretext, so only the new ouptut is returned
         output = output[len(text):].strip()
         logger.debug("Prompt response: %s", output)
         return output
 
-    def _generate(self, pretext, max_tokens=None):
+    def _generate(self, pretext, max_tokens_output=None):
         logger.debug("Generating with prompt: '%s'", pretext)
         logger.debug("Prompt length: %s", len(pretext))
 
         start = time.time()
         output = self.model.generate(
-            pretext, max_length=min(1024, len(pretext) + (max_tokens or
-                                                          self.max_tokens))
+            pretext,
+            max_length=min(1024, len(pretext) + (max_tokens_output or
+                                                 self.max_tokens_output))
         ).strip()
         end = time.time()
 
@@ -146,21 +146,23 @@ class HuggingfaceNLPClient(NLPClient):
                         model_kwargs={"torch_dtype": torch.bfloat16},
                         device_map="auto")
 
-    def prompt(self, text, instructions=None, max_tokens=None):
+    def prompt(self, text, instructions=None, max_tokens_output=None):
         super().prompt(text, instructions)
         text = self.convert_to_prompt(text, role="user")
         if instructions:
             text = instructions + " " + text
-        output = self._generate(text, max_tokens=max_tokens)
+        output = self._generate(text, max_tokens_output=max_tokens_output)
         return output
 
-    def _generate(self, pretext, max_tokens=None):
+    def _generate(self, pretext, max_tokens_output=None):
         logger.debug("Generating with prompt: '%s'", pretext)
         logger.debug("Prompt length: %s", len(pretext))
         start = time.time()
-        raw = self.model(pretext,
-                         return_full_text=False,
-                         max_new_tokens=max_tokens or self.max_tokens)
+        raw = self.model(
+            pretext,
+            return_full_text=False,
+            max_new_tokens=max_tokens_output or self.max_tokens_output
+        )
         output = raw[0]["generated_text"]
         end = time.time()
 
@@ -242,8 +244,8 @@ class MockOnlineNLPClient(OnlineNLPClient):
             self.modelname = self.mock_model
         self.apikey = self._get_api_key()
 
-    def prompt(self, text=None, instructions=None, max_tokens=None):
-        super().prompt(text, instructions)
+    def prompt(self, text=None, instructions=None, max_tokens_output=None):
+        super().prompt(text, instructions, max_tokens_output=max_tokens_output)
         import random
 
         response = random.choice(self.replies)
@@ -271,8 +273,8 @@ class OpenAINLPClient(OnlineNLPClient):
             self.modelname = self.openai_model
         logger.debug(f"Model: {self.modelname}")
 
-    def prompt(self, text, instructions=None, max_tokens=None):
-        super().prompt(text, instructions)
+    def prompt(self, text, instructions=None, max_tokens_output=None):
+        super().prompt(text, instructions, max_tokens_output=max_tokens_output)
         # Reformat the prompt to follow OpenAIs specs:
         new_text = []
         if instructions:
@@ -284,7 +286,7 @@ class OpenAINLPClient(OnlineNLPClient):
         answer = self.client.chat.completions.create(
             model=self.modelname,
             messages=new_text,
-            max_tokens=max_tokens or self.max_tokens,
+            max_tokens=max_tokens_output or self.max_tokens_output,
             n=1,
             stream=False,
         )
@@ -353,12 +355,12 @@ class GeminiNLPClient(OnlineNLPClient):
         genai.configure(api_key=self._get_api_key())
         logger.debug(f"Model: {self.modelname}")
 
-    def prompt(self, text, instructions=None, max_tokens=None):
+    def prompt(self, text, instructions=None, max_tokens_output=None):
         super().prompt(text, instructions)
         import google.generativeai as genai
         generation_config = genai.GenerationConfig(
             candidate_count=1,
-            max_output_tokens=max_tokens or self.max_tokens,
+            max_output_tokens=max_tokens_output or self.max_tokens_output,
             temperature=self.temperature,
             top_p=self.top_p,
         )
@@ -450,8 +452,8 @@ class MistralNLP(OnlineNLPClient):
         if not self.modelname:
             self.modelname = self.mistral_model
 
-    def prompt(self, text, instructions=None, max_tokens=None):
-        super().prompt(text, instructions)
+    def prompt(self, text, instructions=None, max_tokens_output=None):
+        super().prompt(text, instructions, max_tokens_output=max_tokens_output)
         # Reformat the prompt to follow Mistrals specs:
         new_text = []
         if instructions:
@@ -461,7 +463,8 @@ class MistralNLP(OnlineNLPClient):
 
         import mistralai
         try:
-            response = self._prompt(new_text, max_tokens=max_tokens)
+            response = self._prompt(new_text,
+                                    max_tokens_output=max_tokens_output)
         except mistralai.models.sdkerror.SDKError as e:
             if e.status_code == 401:
                 raise NotAuthenticatedError(e)
@@ -482,12 +485,12 @@ class MistralNLP(OnlineNLPClient):
         logger.debug("Prompt response: %s", answer)
         return answer
 
-    def _prompt(self, text, max_tokens=None):
+    def _prompt(self, text, max_tokens_output=None):
         starttime = time.time()
         response = self.client.chat.complete(
             model=self.modelname,
             messages=text,
-            max_tokens=max_tokens or self.max_tokens,
+            max_tokens=max_tokens_output or self.max_tokens_output,
             timeout_ms=self.timeout_ms,
             safe_prompt=False,
             stream=False,
@@ -610,7 +613,7 @@ class NLPHandler(object):
         return "\n".join(ret)
 
     def prompt(self, text, instructions=None, return_raw=False,
-               max_tokens=None):
+               max_tokens_output=None):
         """Ask the NLP and return the result"""
         # TODO: handle the text in various formats
         if instructions is None:
@@ -620,7 +623,7 @@ class NLPHandler(object):
             # TODO: use self.remove_internal_comments on text input too?
             text=self.clean_text(text),
             instructions=self.remove_internal_comments(instructions),
-            max_tokens=max_tokens,
+            max_tokens_output=max_tokens_output,
         )
         if return_raw:
             return response
@@ -632,7 +635,7 @@ class NLPHandler(object):
             """Give me 100-200 words describing an idea for one exiting fantasy
             story. Only return one story. Return a summary of the story,
             including a chapter layout and character descriptions. Do not start
-            the story.""", max_tokens=800)
+            the story.""", max_tokens_output=800)
         # TODO; might change this depending on what AI model to use?
 
         # TODO: Make use of the APIs possibility to fill a object with the
@@ -644,9 +647,9 @@ class NLPHandler(object):
         """Get a title suggestion from the given story concept/summary"""
         title = self.prompt(
             f"""Give me only one title, max 40 characters, for a story with
-            the given concept, without any other feedback and no newlines:
-            {concept_or_summary}
-            """, max_tokens=20)
+            the given concept, without any other feedback, no newlines and no
+            formatting: {concept_or_summary}
+            """, max_tokens_output=20)
         # TODO; might change this depending on what AI model to use
 
         # Some models respond weirdly to this, with a lot of newlines.
