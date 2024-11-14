@@ -692,6 +692,28 @@ class NLPHandler(object):
         prompt.append("\n\n</THE-STORY>")
         return self.prompt(prompt, instructions=game.instructions)
 
+    def prompt_for_ai_summary(self, game):
+        """Get a summary of the given story from the AI.
+
+        The summary returned is meant to be used in later prompts, to compress
+        the story in fewer tokens. Readability is not imporant.
+
+        @type game: run.Game
+        @param game: The game to continue the story from.
+
+        @rtype: str
+        @return: A few sentences, from the AI.
+
+        """
+        prompt = ["""Generate a long summary of the given story. Keep important
+                  details, and ignore information that is not important to the
+                  story. The rest of the prompt contains the story:"""]
+        # TODO: include the summary, if generated, before the next part of the
+        # story, from summary_ai_until_line
+        prompt.append(game.summary)
+        prompt.extend(game.lines[game.summary_ai_until_line:])
+        return self.prompt(prompt, instructions=game.instructions)
+
 
 def main():
     import argparse

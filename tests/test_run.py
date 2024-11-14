@@ -142,15 +142,29 @@ def test_game_object_summary(tmp_path):
     game.add_lines("This is a sentence")
     game.set_summary("Just a sentence")
     assert game.summary == "Just a sentence"
-    assert game.summary_until_line == 1
     game.add_lines("Another sentence.")
     game.set_summary("Just a paragraph")
     assert game.summary == "Just a paragraph"
-    assert game.summary_until_line == 2
 
     game2 = run.Game(db=db, gameid=game.gameid)
     assert game2.summary == "Just a paragraph"
-    assert game2.summary_until_line == 2
+
+
+def test_game_object_summary_ai(tmp_path):
+    db = get_empty_db(tmp_path)
+    game = run.Game(db=db)
+    game.add_lines("This is a sentence")
+    game.set_summary_ai("Just a sentence")
+    assert game.summary_ai == "Just a sentence"
+    assert game.summary_ai_until_line == 1
+    game.add_lines("Another sentence.")
+    game.set_summary_ai("Just a paragraph")
+    assert game.summary_ai == "Just a paragraph"
+    assert game.summary_ai_until_line == 2
+
+    game2 = run.Game(db=db, gameid=game.gameid)
+    assert game2.summary_ai == "Just a paragraph"
+    assert game2.summary_ai_until_line == 2
 
 
 def test_game_copy(tmp_path):

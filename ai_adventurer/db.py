@@ -37,8 +37,12 @@ class Game(_Base):
     """A summary of the story (ideally dynamically updated by the NLP)"""
     summary: orm.Mapped[str] = orm.mapped_column(String, default='')
 
+    """A summary of the story for the NLP (dynamically updated by the NLP)"""
+    summary_ai: orm.Mapped[str] = orm.mapped_column(String, default='')
+
     """What line the summary has been generated to"""
-    summary_until_line: orm.Mapped[int] = orm.mapped_column(Integer, default=0)
+    summary_ai_until_line: orm.Mapped[int] = orm.mapped_column(Integer,
+                                                               default=0)
     # TODO: Should it rather look at the number of tokens instead?
 
     """A token limit per story interaction to fetch to the NLP model"""
@@ -141,7 +145,8 @@ class Database(object):
             "max_token_input": game.max_token_input,
             "max_token_output": game.max_token_output,
             "summary": game.summary,
-            "summary_until_line": game.summary_until_line,
+            "summary_ai": game.summary_ai,
+            "summary_ai_until_line": game.summary_ai_until_line,
         }
         # How to also return Lines for the given Game?
 
@@ -161,7 +166,8 @@ class Database(object):
                     "max_token_input": game.max_token_input,
                     "max_token_output": game.max_token_output,
                     "summary": game.summary,
-                    "summary_until_line": game.summary_until_line,
+                    "summary_ai": game.summary_ai,
+                    "summary_ai_until_line": game.summary_ai_until_line,
                 }
             )
         return ret
@@ -191,7 +197,8 @@ class Database(object):
         db_game.title = game.title
         db_game.details = game.details
         db_game.summary = game.summary
-        db_game.summary_until_line = game.summary_until_line
+        db_game.summary_ai = game.summary_ai
+        db_game.summary_ai_until_line = game.summary_ai_until_line
         if hasattr(game, "max_token_input"):
             db_game.max_token_input = game.max_token_input
         if hasattr(game, "max_token_output"):
