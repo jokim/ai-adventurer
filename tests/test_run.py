@@ -73,6 +73,8 @@ def get_mock_handler():
     return nlp.NLPHandler('mock-online', secrets)
 
 
+# Game object (model)
+
 def test_game_object(tmp_path):
     db = get_empty_db(tmp_path)
     assert len(db.get_games()) == 0
@@ -117,3 +119,32 @@ def test_game_object_chunks(tmp_path):
     game.add_lines(test_str)
     assert game.lines == [test_str]
     # TODO: check db!
+
+
+def test_game_copy(tmp_path):
+    db = get_empty_db(tmp_path)
+    game = run.Game(db=db)
+    title = "Test123"
+    game.set_title(title)
+    instruction = "You are a test"
+    game.set_instructions(instruction)
+    test_line = "This is a sentence."
+    game.add_lines(test_line)
+    details = "Very detailed details"
+    game.set_details(details)
+
+    newgame = run.Game(db=db)
+    newgame.copy_from(game)
+
+    assert newgame.gameid != game.gameid
+
+    assert newgame.title == title
+    assert newgame.instructions == instruction
+    assert newgame.details == details
+    assert newgame.lines == game.lines
+
+    newgame2 = run.Game(db=db, gameid=newgame.gameid)
+    assert newgame2.title == title
+    assert newgame2.instructions == instruction
+    assert newgame2.details == details
+    assert newgame2.lines == game.lines

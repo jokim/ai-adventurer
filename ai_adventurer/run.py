@@ -140,10 +140,14 @@ class Controller(object):
         gameid = focused.base_widget.gamedata["gameid"]
         logger.info(f"Copying game {gameid}")
         try:
-            newid = self.db.copy_game(gameid)
-            self.gui.send_message(f"Game copied, new id: {newid}")
-        except Exception:
+            oldgame = Game(db=self.db, gameid=gameid)
+            newgame = Game(db=self.db)
+            newgame.copy_from(oldgame)
+            self.gui.send_message(f"Game copied, new id: {newgame.gameid}")
+        except Exception as e:
+            logger.exception(e)
             self.gui.send_message("Failed to copy")
+        return self.start_game_lister(widget=widget)
 
     def edit_config(self, widget=None, focused=None):
         logger.info("Saving config")
@@ -345,6 +349,7 @@ class Game(object):
             self.instructions = db_game["instructions"]
             self.details = db_game["details"]
             self.title = db_game["title"]
+            self.summary = db_game["summary"]
             self.lines = self.db.get_lines(gameid)
             self.max_token_input = db_game["max_token_input"]
             self.max_token_output = db_game["max_token_output"]
@@ -392,6 +397,17 @@ class Game(object):
 
     def set_max_token_output(self, max_output):
         self.max_token_output = int(max_output)
+        self.save()
+
+    def copy_from(self, oldgame):
+        """Copy all data from a given game, into this game"""
+        self.instructions = oldgame.instructions
+        self.details = oldgame.details
+        self.title = oldgame.title
+        self.summary = oldgame.summary
+        self.lines = oldgame.lines
+        self.max_token_input = oldgame.max_token_input
+        self.max_token_output = oldgame.max_token_output
         self.save()
 
 
