@@ -79,9 +79,13 @@ def test_game_object(tmp_path):
     db = get_empty_db(tmp_path)
     assert len(db.get_games()) == 0
     game = run.Game(db=db)
-    assert game.gameid == 1
     assert len(db.get_games()) == 1
     game.save()
+
+    game2 = run.Game(db=db, gameid=game.gameid)
+    assert game.gameid == game2.gameid
+    game3 = run.Game(db=db)
+    assert game3.gameid != game.gameid
 
 
 def test_game_object_title(tmp_path):
@@ -92,6 +96,9 @@ def test_game_object_title(tmp_path):
     assert game.title == test_str
     assert db.get_games()[0]["title"] == test_str
 
+    game2 = run.Game(db=db, gameid=game.gameid)
+    assert game2.title == test_str
+
 
 def test_game_object_details(tmp_path):
     db = get_empty_db(tmp_path)
@@ -100,6 +107,9 @@ def test_game_object_details(tmp_path):
     game.set_details(test_str)
     assert game.details == test_str
     assert db.get_games()[0]["details"] == test_str
+
+    game2 = run.Game(db=db, gameid=game.gameid)
+    assert game2.details == test_str
 
 
 def test_game_object_instructions(tmp_path):
@@ -110,6 +120,9 @@ def test_game_object_instructions(tmp_path):
     assert game.instructions == test_str
     assert db.get_games()[0]["instructions"] == test_str
 
+    game2 = run.Game(db=db, gameid=game.gameid)
+    assert game2.instructions == test_str
+
 
 def test_game_object_chunks(tmp_path):
     db = get_empty_db(tmp_path)
@@ -118,7 +131,26 @@ def test_game_object_chunks(tmp_path):
     test_str = "This is a sentence."
     game.add_lines(test_str)
     assert game.lines == [test_str]
-    # TODO: check db!
+
+    game2 = run.Game(db=db, gameid=game.gameid)
+    assert game2.lines == [test_str]
+
+
+def test_game_object_summary(tmp_path):
+    db = get_empty_db(tmp_path)
+    game = run.Game(db=db)
+    game.add_lines("This is a sentence")
+    game.set_summary("Just a sentence")
+    assert game.summary == "Just a sentence"
+    assert game.summary_until_line == 1
+    game.add_lines("Another sentence.")
+    game.set_summary("Just a paragraph")
+    assert game.summary == "Just a paragraph"
+    assert game.summary_until_line == 2
+
+    game2 = run.Game(db=db, gameid=game.gameid)
+    assert game2.summary == "Just a paragraph"
+    assert game2.summary_until_line == 2
 
 
 def test_game_copy(tmp_path):

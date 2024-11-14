@@ -297,7 +297,7 @@ class GameController(object):
             new_details = clean_text_for_saving(default_details)
 
         self.game.set_details(new_details)
-        self.gui.send_message("Story summary updated")
+        self.gui.send_message("Story details updated")
 
     def edit_system_instructions(self, widget):
         new_instructions = self.gui.start_input_edit_text(
@@ -340,6 +340,7 @@ class Game(object):
         self.details = ""
         self.title = "Title"
         self.summary = ""
+        self.summary_until_line = 0
         self.max_token_input = None
         self.max_token_output = None
 
@@ -350,6 +351,7 @@ class Game(object):
             self.details = db_game["details"]
             self.title = db_game["title"]
             self.summary = db_game["summary"]
+            self.summary_until_line = db_game["summary_until_line"]
             self.lines = self.db.get_lines(gameid)
             self.max_token_input = db_game["max_token_input"]
             self.max_token_output = db_game["max_token_output"]
@@ -375,6 +377,7 @@ class Game(object):
 
     def set_summary(self, new_summary):
         self.summary = cleanup_text(new_summary).strip()
+        self.summary_until_line = len(self.lines)
         self.save()
 
     def add_lines(self, text):
@@ -405,6 +408,7 @@ class Game(object):
         self.details = oldgame.details
         self.title = oldgame.title
         self.summary = oldgame.summary
+        self.summary_until_line = oldgame.summary_until_line
         self.lines = oldgame.lines
         self.max_token_input = oldgame.max_token_input
         self.max_token_output = oldgame.max_token_output
