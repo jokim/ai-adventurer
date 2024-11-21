@@ -9,6 +9,7 @@ import re
 import time
 
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
+import tiktoken
 
 
 logger = logging.getLogger(__name__)
@@ -62,6 +63,15 @@ class NLPClient(object):
         if isinstance(text, str):
             return text
         return "\n".join(text)
+
+    def count_tokens(self, text):
+        """Count the number of tokens in the story.
+
+        Defaults to OpenAIs encoding.
+
+        """
+        enc = tiktoken.get_encoding("o200k_base")
+        return len(enc.encode(text))
 
 
 class MockNLPClient(NLPClient):
@@ -713,6 +723,10 @@ class NLPHandler(object):
         prompt.append(game.summary)
         prompt.extend(game.lines[game.summary_ai_until_line:])
         return self.prompt(prompt, instructions=game.instructions)
+
+    def count_tokens(self, game):
+        """Count the number of tokens in the story."""
+        return self.nlp_client.count_tokens("\n".join(game.lines))
 
 
 def main():

@@ -194,3 +194,17 @@ def test_game_copy(tmp_path):
     assert newgame2.instructions == instruction
     assert newgame2.details == details
     assert newgame2.lines == game.lines
+
+
+def test_count_tokens(tmp_path):
+    db = get_empty_db(tmp_path)
+    handler = get_mock_handler()
+    game = run.Game(db=db)
+    assert handler.count_tokens(game) == 0
+    game.add_lines("a")
+    assert handler.count_tokens(game) == 1
+    game.add_lines("b")
+    # The newline gets its own token, too
+    assert handler.count_tokens(game) == 3
+    game.add_lines("c")
+    assert handler.count_tokens(game) == 5
