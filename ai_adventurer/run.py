@@ -75,6 +75,7 @@ class Controller(object):
         self.gui.load_mainmenu(choices)
 
     def start_game_lister(self, widget=None, focused=None):
+        """View a list of saved games"""
         choices = {
             'd': ('Delete', self.delete_game),
             'c': ('Copy', self.copy_game),
@@ -102,6 +103,13 @@ class Controller(object):
         self.gui.send_message("Game loaded. Remember, push ? for help.")
 
     def delete_game(self, widget, focused):
+        """Call to delete a given game, but ask for confirmation first.
+
+        widget is the active view object, given by urwids callback regime
+
+        focused is the given game, given by urwids callback regime
+
+        """
         gameid = focused.base_widget.gamedata["gameid"]
         title = focused.base_widget.gamedata["title"]
 
@@ -110,6 +118,11 @@ class Controller(object):
                              user_data=(gameid, focused))
 
     def delete_game_confirmed(self, widget, user_data):
+        """Really delete a given game
+
+        This method should be called from a confirmation dialogue.
+
+        """
         gameid, focused = user_data
         logger.info(f"Deleting game {gameid}")
         self.db.delete_game(gameid)
@@ -117,26 +130,8 @@ class Controller(object):
         # Reload game list, but without resetting the widget, so focus is kept
         return self.start_game_lister(widget=widget)
 
-        # games = []
-        # for game in self.db.get_games():
-        #     games.append({
-        #         'gameid': game['gameid'],
-        #         'title': game['title'],
-        #         'length': 'TODO',
-        #         'callback': self.load_game,
-        #     })
-        # # TODO: seems like I've not understood something here. How to just
-        # # remove one line in the body?
-        # logger.debug(self.gui.loop.widget.base_widget.body.body)
-        # # old_pos = min(len(games) - 1,
-        # #
-        # int(self.gui.loop.widget.base_widget.body.focus_position))
-        # self.gui.loop.widget.base_widget.body.body.games = games
-        # self.gui.loop.widget.base_widget.body.body.regenerate_body()
-        # self.gui.loop.widget.base_widget.body.body.move_up()
-        # # self.gui.loop.widget.base_widget.body.set_focus(old_pos)
-
     def copy_game(self, widget, focused):
+        """Create a copy of the given game"""
         gameid = focused.base_widget.gamedata["gameid"]
         logger.info(f"Copying game {gameid}")
         try:
@@ -156,11 +151,13 @@ class Controller(object):
         self.gui.send_message("Config saved")
 
     def start_new_game(self, _=None, focused=None):
+        """Start a new game dialogue"""
         self.gamec = GameController(db=self.db, nlp=self.nlp, gui=self.gui,
                                     controller=self)
         self.gamec.start_new_game()
 
     def get_nlp_handler(self):
+        """Setup the chosen AI model handler"""
         modelname = self.config["DEFAULT"]["nlp_model"]
         try:
             return nlp.NLPHandler(modelname, secrets=self.secrets)
