@@ -25,11 +25,7 @@ logger = logging.getLogger(__name__)
 
 
 class GUI(object):
-    """The main GUI of the game.
-
-    Now using `urwid` as the GUI engine.
-
-    """
+    """The main GUI of the game, controlling urwid"""
 
     game_title = "AI adventurer"
 
@@ -91,6 +87,7 @@ class GUI(object):
         ("flame", "light red", "", "", "light red", ""),
         # ("streak", "black", "dark red"),
         # ("bg", "white", "dark blue", "", "#fff", "#000"),
+        ("subtitle", "white,bold", "white", "", "#fff,bold", "#000"),
     ]
 
     def set_header(self, text=""):
@@ -123,7 +120,9 @@ class GUI(object):
         """Change the viewer to the game window"""
         self.event_reset.set()
         self.set_header(game.title)
-        self.story_box = StoryBox(game=game, choices=choices)
+        self.meta_box = MetaStoryBox(game=game)
+        self.story_box = StoryBox(game=game, choices=choices,
+                                  metadatabox=self.meta_box)
         # TODO: When adding the ScrollBar, I got out of bounds exceptions from
         # urwid.widget.widget.validate_size(). Why?
         # body = urwid.ScrollBar(
@@ -131,12 +130,19 @@ class GUI(object):
         #     thumb_char=urwid.ScrollBar.Symbols.LITE_SHADE,
         #     width=1,
         # )
-        self.set_body(urwid.Padding(
-            # body,
-            self.story_box,
-            align="center",
-            width=73,
+
+        # self.set_body(urwid.Padding(
+        #     # body,
+        #     self.story_box,
+        #     align="center",
+        #     width=73,
+        # ))
+        self.set_body(urwid.Columns(
+            [urwid.Padding(self.story_box, align="center", width=73),
+             self.meta_box],
+            dividechars=2
         ))
+        # TODO: add option for viewing/hiding the metadata box
 
     def load_mainmenu(self, choices):
         """Set up and present the main menu.
@@ -362,7 +368,7 @@ class MainMenu(Menu):
 class StoryBox(urwid.Scrollable):
     """The box that handles the story itself."""
 
-    def __init__(self, game, choices):
+    def __init__(self, game, choices, metadatabox=None):
         self.internal_choices = {
             'j': ('Move selection one down', self.move_selection_down),
             'k': ('Move selection one up', self.move_selection_up),
@@ -373,6 +379,7 @@ class StoryBox(urwid.Scrollable):
         self.game = game
         self.choices = choices
         self.selected_part = -1
+        self.metadatabox = metadatabox
 
         # Store the previous size, to be able to adjust scrollpos to the
         # selected text:
@@ -470,6 +477,10 @@ class StoryBox(urwid.Scrollable):
             width, _ = self._cached_size
         widgets, first_selected_row = self._get_story_widgets(width)
         self.content.original_widget = urwid.Pile(widgets)
+
+        # TODO: refactor and move this later:
+        self.metadatabox.update_view()
+
         return first_selected_row
 
     def open_help_popup(self):
@@ -483,6 +494,37 @@ class StoryBox(urwid.Scrollable):
         self.content.set_popup_content(urwid.Pile([urwid.Text(v) for v in
                                                    sorted(values)]))
         self.content.open_pop_up()
+
+
+class MetaStoryBox(urwid.ListBox):
+    """A view of metadata about a given game."""
+
+    def __init__(self, game):
+        self.game = game
+        super().__init__([])
+        self.update_view()
+
+    def update_view(self):
+        """Refill the view with updated metadata"""
+        self.body.clear()
+        # TODO: add data
+        self.body.append(urwid.Text([('subtitle', "GameID: "),
+                                    "%d" % self.game.gameid]))
+        self.body.append(urwid.Text([('subtitle', "Title: "),
+                                     self.game.title]))
+        self.body.append(urwid.Text([('subtitle', "Lines: "),
+                                    "%d" % len(self.game.lines)]))
+        self.body.append(urwid.Text([('subtitle', "AI summary until line: "),
+                                    "%d" % self.game.summary_ai_until_line]))
+        self.body.append(urwid.Text(('subtitle', "AI summary:")))
+        self.body.append(urwid.Text(self.game.summary_ai))
+
+        self.body.append(urwid.Text(('subtitle', "Instructions:")))
+        self.body.append(urwid.Text(self.game.instructions))
+        self.body.append(urwid.Text(('subtitle', "Summary:")))
+        self.body.append(urwid.Text(self.game.summary))
+        self.body.append(urwid.Text(('subtitle', "Details:")))
+        self.body.append(urwid.Text(self.game.details))
 
 
 class DecorationButton(urwid.Button):

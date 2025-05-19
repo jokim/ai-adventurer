@@ -239,7 +239,7 @@ class GameController(object):
             self.game.delete_line(lineid)
             more = self.nlp.prompt_for_next_lines(self.game)
             self.game.add_lines(more)
-            self.gui.send_message("Part regenerated, if it was the last…")
+            self.gui.send_message("Part regenerated")
             self.gui.story_box.load_text()
         else:
             self.gui.send_message("Can only retry last part")
@@ -283,6 +283,7 @@ class GameController(object):
         if new_title:
             self.game.set_title(new_title)
             self.gui.set_header(self.game.title)
+            self.gui.meta_box.update_view()
             self.gui.send_message("Title updated")
         else:
             self.gui.send_message("Title unchanged")
@@ -294,6 +295,7 @@ class GameController(object):
             new_details = clean_text_for_saving(default_details)
 
         self.game.set_details(new_details)
+        self.gui.meta_box.update_view()
         self.gui.send_message("Story details updated")
 
     def edit_system_instructions(self, widget):
@@ -306,6 +308,7 @@ class GameController(object):
                 self.nlp.default_instructions)
 
         self.game.set_instructions(new_instructions)
+        self.gui.meta_box.update_view()
         self.gui.send_message("AI instructions updated")
 
     def edit_active_line(self, widget):
