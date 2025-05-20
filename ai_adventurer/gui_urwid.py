@@ -479,7 +479,8 @@ class StoryBox(urwid.Scrollable):
         self.content.original_widget = urwid.Pile(widgets)
 
         # TODO: refactor and move this later:
-        self.metadatabox.update_view()
+        if self.metadatabox:
+            self.metadatabox.update_view()
 
         return first_selected_row
 
@@ -507,13 +508,15 @@ class MetaStoryBox(urwid.ListBox):
     def update_view(self):
         """Refill the view with updated metadata"""
         self.body.clear()
-        # TODO: add data
         self.body.append(urwid.Text([('subtitle', "GameID: "),
                                     "%d" % self.game.gameid]))
         self.body.append(urwid.Text([('subtitle', "Title: "),
                                      self.game.title]))
         self.body.append(urwid.Text([('subtitle', "Lines: "),
                                     "%d" % len(self.game.lines)]))
+        self.body.append(
+            urwid.Text([('subtitle', "Characters: "),
+                        "%d" % sum(len(x) for x in self.game.lines)]))
         self.body.append(urwid.Text([('subtitle', "AI summary until line: "),
                                     "%d" % self.game.summary_ai_until_line]))
         self.body.append(urwid.Text(('subtitle', "AI summary:")))

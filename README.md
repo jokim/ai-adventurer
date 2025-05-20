@@ -30,3 +30,12 @@ poetry install --with localai
 If you start the game and push 'c' in the start menu, it will create two files:
 `config.ini` and `secrets.ini` (for API keys).
 
+
+### Testing
+
+Tests can be run with:
+
+```
+poetry run pytest
+```
+

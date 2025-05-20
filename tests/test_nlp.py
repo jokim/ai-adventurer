@@ -2,8 +2,10 @@
 
 import pytest
 
-from ai_adventurer import nlp
+from ai_adventurer import db
 from ai_adventurer import config
+from ai_adventurer import nlp
+from ai_adventurer import run
 
 
 def test_load_base_nlpclient():
@@ -48,6 +50,7 @@ def test_load_handler_online():
 
 
 def get_mock_handler():
+    """Return a mock NLPHandler"""
     secrets = get_fake_secrets()
     mock_class = nlp.get_nlp_class('mock-online')
     secrets['DEFAULT'][mock_class.secrets_api_key_name] = 'fake-API-key'
@@ -125,8 +128,43 @@ def test_prompt_converter_dicts():
 
 # TODO: test changing the format to the different AI APIs format
 
-# TODO: Test the handler more
 
+def get_mock_db(tmp_path):
+    """Get temp, empty sqlite db for mocking"""
+    path = f"sqlite:///{tmp_path}/database.sqlite3"
+    return db.Database(db_file=path)
+
+
+def get_mock_gameobj(tmp_path):
+    db = get_mock_db(tmp_path)
+    return run.Game(db=db)
+
+
+def test_handler_get_next_line(tmp_path):
+    game = get_mock_gameobj(tmp_path)
+    handler = get_mock_handler()
+    ret = handler.prompt_for_next_lines(game)
+    assert ret
+    ret = handler.prompt_for_next_lines(game)
+    assert ret
+
+
+def test_handler_autosummarize(tmp_path, mocker):
+    game = get_mock_gameobj(tmp_path)
+    game.add_lines("Test1.")
+    game.add_lines("Test2.")
+    game.add_lines("Test3.")
+
+    handler = get_mock_handler()
+    handler.limit_story_prompt_characters = 5
+    spy = mocker.spy(handler, "prompt_for_ai_summary")
+
+    ret = handler.prompt_for_next_lines(game)
+    spy.assert_called_once()
+    assert ret
+
+
+# TODO: Test the handler more
 
 def test_remove_internal_comments():
     handler = get_mock_handler()

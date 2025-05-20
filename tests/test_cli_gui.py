@@ -118,6 +118,12 @@ def test_storybox_select_longer_and_combined():
     assert row == 2
 
 
+def test_metabox_empty():
+    game = run.Game(db.MockDatabase())
+    m = gui_urwid.MetaStoryBox(game)
+    m.update_view()
+
+
 @pytest.mark.skip(reason="Missing implementation")
 def test_convert_simple_line():
     game = run.Game(db.MockDatabase())
@@ -244,6 +250,8 @@ def test_simple_menu():
     # TODO: check keyinput and assert test_call is called
 
 
+@pytest.mark.filterwarnings("ignore:Don't use user_arg argument" +
+                            ":DeprecationWarning")
 def test_gamelister_init():
     def test_call(data):
         print(f"Returned: {data}")

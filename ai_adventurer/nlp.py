@@ -15,6 +15,14 @@ import tiktoken
 logger = logging.getLogger(__name__)
 
 
+# Temp variable for limiting how much of the story that should go into the
+# prompt for next lines. Less characters means less token usage, but the NLP
+# remembers less details. Should probably change this to specify tokens, but
+# this is easier to use, for now.
+# Using the rule of thumb that 1 token ~= 4 characters, for English text.
+default_limit_story_prompt_input_characters = 2000 * 4
+
+
 class NotAuthenticatedError(Exception):
     pass
 
@@ -580,6 +588,14 @@ class NLPHandler(object):
     def __init__(self, modelname, secrets):
         self.nlp_client = self.load_model(modelname, secrets)
 
+        # Limit for when to autosummarize the story
+        self.limit_story_prompt_characters = \
+            default_limit_story_prompt_input_characters
+
+        # The length of the autosummary
+        self.limit_autosummary_characters = \
+            self.limit_story_prompt_characters / 3
+
     @staticmethod
     def load_model(modelname, secrets):
         """Instantiate correct NLP model by given input"""
@@ -646,7 +662,7 @@ class NLPHandler(object):
             story. Only return one story. Return a summary of the story,
             including a chapter layout and character descriptions. Do not start
             the story.""", max_tokens_output=800)
-        # TODO; might change this depending on what AI model to use?
+        # TODO: might change this depending on what AI model to use?
 
         # TODO: Make use of the APIs possibility to fill a object with the
         # proper data. Could then fetch both title, and story details in the
@@ -656,9 +672,9 @@ class NLPHandler(object):
     def prompt_for_title(self, concept_or_summary):
         """Get a title suggestion from the given story concept/summary"""
         title = self.prompt(
-            f"""Give me only one title, max 40 characters, for a story with
-            the given concept, without any other feedback, no newlines and no
-            formatting: {concept_or_summary}
+            f"""Give me only one title, without any other feedback or
+            formatting, max 40 characters, for a story with the given concept:
+            {concept_or_summary}
             """, max_tokens_output=20)
         # TODO; might change this depending on what AI model to use
 
@@ -678,6 +694,25 @@ class NLPHandler(object):
             prompt.append(details)
         return self.prompt(prompt)
 
+    def _generate_prompt_for_next_lines(self, game):
+        """Generate a prompt to use for getting next lines from NLP."""
+        prompt = ["Continue the last sentence in the given story:"]
+        prompt.append(f"\n---\nThe title of the story: '{game.title}'")
+
+        details = self.remove_internal_comments(game.details).strip()
+        if details:
+            prompt.append("\n---\nImportant details about the story:")
+            prompt.append(details)
+
+        if game.summary_ai:
+            prompt.append("\n---\nSummary of start of story:")
+            prompt.append(game.summary_ai)
+
+        prompt.append("\n---\n<THE-STORY>:\n")
+        prompt.extend(game.lines[game.summary_ai_until_line:])
+        prompt.append("\n\n</THE-STORY>")
+        return prompt
+
     def prompt_for_next_lines(self, game):
         """Get next few lines from the AI, continuing the story.
 
@@ -689,17 +724,27 @@ class NLPHandler(object):
 
         """
         # TODO: Change this to the prompt model!
-        prompt = ["Generate two more sentences, continuing the given story:"]
-        prompt.append(f"\n---\nThe title of the story: '{game.title}'")
+        prompt = self._generate_prompt_for_next_lines(game)
 
-        details = self.remove_internal_comments(game.details).strip()
-        if details:
-            prompt.append("\n---\nImportant details about the story:")
-            prompt.append(details)
+        # Check if too many tokens, and summarize if so:
+        # TODO: Only counting characters for now, but should count tokens for
+        # most correct result:
+        prompt_length: int = sum(len(x) for x in prompt)
+        if prompt_length > self.limit_story_prompt_characters:
+            logging.debug("Prompt is %d chars - longer than limit: %d",
+                          prompt_length, self.limit_story_prompt_characters)
+            # The story have gotten too long
 
-        prompt.append("\n---\n<THE-STORY>:\n")
-        prompt.extend(game.lines)
-        prompt.append("\n\n</THE-STORY>")
+            # Double check that summary is not recently generated: This
+            # shouldn't happen, but a bug or a bad NLP might not be able to
+            # make a short summary.
+            if game.summary_ai_until_line < len(game.lines):
+                summary_ai = self.prompt_for_ai_summary(game)
+                game.set_summary_ai(summary_ai)
+                prompt = self._generate_prompt_for_next_lines(game)
+                logging.debug("Prompt length after autosummary: %d (old: %d)",
+                              sum(len(x) for x in prompt), prompt_length)
+
         return self.prompt(prompt, instructions=game.instructions)
 
     def prompt_for_ai_summary(self, game):
@@ -715,14 +760,22 @@ class NLPHandler(object):
         @return: A few sentences, from the AI.
 
         """
-        prompt = ["""Generate a long summary of the given story. Keep important
-                  details, and ignore information that is not important to the
-                  story. The rest of the prompt contains the story:"""]
+        prompt = ["""Generate a detailed summary of the given story, in %d
+                     characters. Ignore info that isn't important later for the
+                     story, but keep details that might be important later."""
+                  % self.limit_autosummary_characters]
         # TODO: include the summary, if generated, before the next part of the
         # story, from summary_ai_until_line
-        prompt.append(game.summary)
+        # prompt.append(game.summary)
+        prompt.append(game.summary_ai)
         prompt.extend(game.lines[game.summary_ai_until_line:])
-        return self.prompt(prompt, instructions=game.instructions)
+        ret = self.prompt(prompt,
+                          instructions="You respond to an AI. Only return " +
+                                       "answer"
+                          )
+        logging.debug("New autosummary until line %d: %d chars long",
+                      game.summary_ai_until_line, len(ret))
+        return ret
 
     def count_tokens(self, game):
         """Count the number of tokens in the story."""
