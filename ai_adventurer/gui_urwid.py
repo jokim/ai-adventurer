@@ -208,24 +208,17 @@ class GUI(object):
         """Load the game overview"""
         self.event_reset.set()
         # urwid.SimpleFocusListWalker(gamelist)))
-        if not hasattr(self, '_gamelister'):
-            self._gamelister = self._generate_gamelister(games, choices)
-        else:
-            self._gamelister.games = games
-            self._gamelister.choices = choices
-            self._gamelister.generate_body()
+        lineformat = "{title:50} - {lenlines:>6}"
+        gamelister = GameLister(games=games, choices=choices,
+                                lineformat=lineformat)
 
         self.set_body(urwid.Frame(
-            body=self._gamelister,
+            body=gamelister,
             header=urwid.AttrMap(urwid.Padding(
-                urwid.Text(self._gamelister.lineformat.format(
+                urwid.Text(gamelister.lineformat.format(
                     title="Title", lenlines="Chunks")),
                 left=2), "title"),
         ))
-
-    def _generate_gamelister(self, games, choices):
-        lineformat = "{title:50} - {lenlines:>6}"
-        return GameLister(games=games, choices=choices, lineformat=lineformat)
 
     def start_input_edit_text(self, old_text):
         """Ask user to edit given text and return the new one.
