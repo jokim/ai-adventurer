@@ -30,6 +30,7 @@ class GUI(object):
     game_title = "AI adventurer"
 
     def __init__(self):
+        self.show_metadata: bool = False
 
         # Build the layout
         self.header_text = urwid.Text(("header", self.game_title),
@@ -65,6 +66,8 @@ class GUI(object):
                 self.loop.widget.close_pop_up()
         if key in {'q', 'Q'}:
             self.quit()
+        if key in {'m'}:
+            self.toggle_metadata()
         logger.debug(f"In main GUI: Unhandled input: {key!r}")
 
     # urwid has a palette in the form of tuples:
@@ -131,18 +134,28 @@ class GUI(object):
         #     width=1,
         # )
 
-        # self.set_body(urwid.Padding(
-        #     # body,
-        #     self.story_box,
-        #     align="center",
-        #     width=73,
-        # ))
-        self.set_body(urwid.Columns(
-            [urwid.Padding(self.story_box, align="center", width=73),
-             self.meta_box],
-            dividechars=2
+        self.set_body(urwid.Padding(
+            self.story_box,
+            align="center",
+            width=73,
         ))
-        # TODO: add option for viewing/hiding the metadata box
+
+    def toggle_metadata(self):
+        """View/hide the metadata box"""
+        self.show_metadata = not self.show_metadata
+
+        if self.show_metadata:
+            self.set_body(urwid.Columns(
+                [urwid.Padding(self.story_box, align="center", width=73),
+                 self.meta_box],
+                dividechars=2
+            ))
+        else:
+            self.set_body(urwid.Padding(
+                self.story_box,
+                align="center",
+                width=73,
+            ))
 
     def load_mainmenu(self, choices):
         """Set up and present the main menu.
