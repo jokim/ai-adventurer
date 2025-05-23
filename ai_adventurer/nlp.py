@@ -680,8 +680,11 @@ class NLPHandler(object):
 
         # Some models respond weirdly to this, with a lot of newlines.
         title = title.replace('\n', '')
+        # Some models add formatting, even if told not to.
+        title = title.replace('*', '')
+
         title = title[:50]  # Give it some slack, NLPs aren't good at math
-        return title
+        return title.strip()
 
     def prompt_for_introduction(self, game):
         """Get AIs suggestion for the first sentences, starting the story"""
