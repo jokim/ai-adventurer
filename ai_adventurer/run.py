@@ -13,22 +13,6 @@ from ai_adventurer import nlp
 logger = logging.getLogger(__name__)
 
 
-default_details = """
-    % Story summary and details.
-    %
-    % This is where you could put details that are important for the story. For
-    % example a summary of how the story should go, or details about certain
-    % characters.
-    %
-    % All lines starting with hash (#) are ignored.
-
-    % The default is quite generic...
-    This is a story about you, going on an adventurous journey. You will
-    experience a lot of things, and will be surprised from time to time.
-
-    """
-
-
 def cleanup_text(text):
     """Remove some unnecessary white space"""
     if isinstance(text, (list, tuple)):
@@ -97,7 +81,7 @@ class Controller(object):
         """
         logger.debug(f"Called load_game: {widget!r}, user_Data: {user_data!r}")
         self.gamec = GameController(db=self.db, nlp=self.nlp, gui=self.gui,
-                                    controller=self,
+                                    controller=self, config=self.config,
                                     gameid=user_data['gameid'])
         self.gamec.load_game()
         self.gui.send_message("Game loaded. Remember, push ? for help.")
@@ -153,14 +137,15 @@ class Controller(object):
     def start_new_game(self, _=None, focused=None):
         """Start a new game dialogue"""
         self.gamec = GameController(db=self.db, nlp=self.nlp, gui=self.gui,
-                                    controller=self)
+                                    controller=self, config=self.config)
         self.gamec.start_new_game()
 
     def get_nlp_handler(self):
         """Setup the chosen AI model handler"""
-        modelname = self.config["DEFAULT"]["nlp_model"]
+        modelname = self.config["nlp"]["model"]
         try:
-            return nlp.NLPHandler(modelname, secrets=self.secrets)
+            return nlp.NLPHandler(modelname, secrets=self.secrets,
+                                  config=self.config)
         except nlp.NotAuthenticatedError as e:
             # Ask for API-key and retry
             print(e)
@@ -170,17 +155,19 @@ class Controller(object):
             answer = input("Want to save this to secrets.ini? (y/N) ")
             if answer == 'y':
                 config.save_secrets(self.secrets)
-            return nlp.NLPHandler(modelname, secrets=self.secrets)
+            return nlp.NLPHandler(modelname, secrets=self.secrets,
+                                  config=self.config)
 
 
 class GameController(object):
     """The controller of one game/story"""
 
-    def __init__(self, db, nlp, gui, controller, gameid=None):
+    def __init__(self, db, nlp, gui, controller, config, gameid=None):
         self.db = db
         self.nlp = nlp
         self.gui = gui
         self.controller = controller
+        self.config = config
 
         self.game_actions = {
             "r": ("Retry active part", self.retry_line),
@@ -199,8 +186,8 @@ class GameController(object):
 
     def start_new_game(self):
         """Start the initial dialog for creating a new story"""
-        self.game.set_instructions(
-            clean_text_for_saving(self.nlp.default_instructions))
+        self.game.set_instructions(clean_text_for_saving(
+            self.config["story_defaults"]["instructions"]))
         self.gui.ask_oneliner(
             question="A concept for the story (leave blank for random): ",
             callback=self.start_new_game_with_concept)
@@ -292,7 +279,8 @@ class GameController(object):
         new_details = self.gui.start_input_edit_text(self.game.details)
 
         if not self.nlp.remove_internal_comments(new_details.strip()).strip():
-            new_details = clean_text_for_saving(default_details)
+            new_details = clean_text_for_saving(
+                self.config["story_defaults"]["details"])
 
         self.game.set_details(new_details)
         self.gui.meta_box.update_view()
@@ -305,7 +293,7 @@ class GameController(object):
         if not self.nlp.remove_internal_comments(
                 new_instructions.strip()).strip():
             new_instructions = clean_text_for_saving(
-                self.nlp.default_instructions)
+                self.config["story_defaults"]["instructions"])
 
         self.game.set_instructions(new_instructions)
         self.gui.meta_box.update_view()

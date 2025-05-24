@@ -20,7 +20,7 @@ def test_load_empty_configfile():
 
 def test_default_config():
     ret = config.load_config("", None)
-    assert ret == config.default_config
+    assert config_to_dict(ret) == config.default_config
 
 
 def test_save_config(tmp_path):
@@ -29,18 +29,32 @@ def test_save_config(tmp_path):
     config.save_config(conf, filename)
     assert os.path.exists(filename)
     conf2 = config.load_config(filename)
-    assert conf == conf2
+    assert config_to_dict(conf) == config_to_dict(conf2)
 
 
 def test_save_edited_config(tmp_path):
     filename = tmp_path / "conf.ini"
     conf = config.load_config("")
-    conf.set('DEFAULT', 'nlp_model', 'nonsence')
+    conf.set('nlp', 'model', 'nonsence')
     config.save_config(conf, filename)
     conf2 = config.load_config(filename)
     assert conf == conf2
     assert 'nonsence' in filename.read_text()
-    assert 'nonsence' == conf2.get('DEFAULT', 'nlp_model')
+    assert 'nonsence' == conf2.get('nlp', 'model')
+    return
+
+
+def test_save_config_newlines(tmp_path):
+    filename = tmp_path / "conf.ini"
+    conf = config.load_config("")
+    value = "line 1\nline 2\nline 3"
+    conf.set('nlp', 'model', value)
+    config.save_config(conf, filename)
+    conf2 = config.load_config(filename)
+    assert conf == conf2
+    assert config_to_dict(conf) == config_to_dict(conf2)
+    assert 'line 2' in filename.read_text()
+    assert value == conf2.get('nlp', 'model')
     return
 
 

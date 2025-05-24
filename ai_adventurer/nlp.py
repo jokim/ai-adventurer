@@ -11,6 +11,7 @@ import time
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 import tiktoken
 
+from ai_adventurer import config
 
 logger = logging.getLogger(__name__)
 
@@ -559,33 +560,8 @@ class NLPHandler(object):
 
     """
 
-    default_instructions = """
-        % This is the instructions that is given to the AI before the story.
-        % - All lines starting with percent (%) are removed for the AI.
-        % - Leave the instructions blank to reset to the default instructions.
-
-        You are an excellent story writer assistant, writing remarkable fantasy
-        fiction. Do not reply with dialog, only with the answers directly.
-
-        Use markdown format, but use formatting sparsely.
-
-        Writing Guidelines: Use second person perspective and present tense,
-        unless the story starts differently. Use writing techniques to bring
-        the world and characters to life. Vary what phrases you use. Be
-        specific and to the point, and focus on the action in the story. Let
-        the characters develop, and bring out their motivations, relationships,
-        thoughts and complexity. Keep the story on track, but be creative and
-        allow surprising subplots. Include dialog with the characters. Avoid
-        repetition and summarisation. Avoid repeating phrases. Use humour.
-
-        If a paragraph starts with "INSTRUCT:", it is not a part of the story,
-        but instructions from the user that you must follow when continuing the
-        story. Do not add instructions on behalf of the user. Do not include
-        the word INSTRUCT in the story.
-
-        """
-
-    def __init__(self, modelname, secrets):
+    def __init__(self, modelname, secrets, config):
+        self.config = config
         self.nlp_client = self.load_model(modelname, secrets)
 
         # Limit for when to autosummarize the story
@@ -620,30 +596,30 @@ class NLPHandler(object):
 
     @staticmethod
     def remove_internal_comments(text):
-        """Remove internal comments from given text - lines starting with "%".
+        """Remove internal comments from given text - lines starting with "§".
 
         Useful to filter out internal comments before giving it to the AI,
         reducing token usage.
 
         Example::
 
-            % This is an internal comment, used for helping the end user
+            § This is an internal comment, used for helping the end user
             This is the text that the AI language model should care about.
 
         """
         ret = []
         for line in text.splitlines():
             line = line.lstrip()
-            if not line.startswith("%"):
+            if not line.startswith("§"):
                 ret.append(line)
         return "\n".join(ret)
 
-    def prompt(self, text, instructions=None, return_raw=False,
+    def prompt(self, text, instructions: str = None, return_raw=False,
                max_tokens_output=None):
         """Ask the NLP and return the result"""
         # TODO: handle the text in various formats
         if instructions is None:
-            instructions = self.default_instructions
+            instructions = self.config["story_defaults"]["instructions"]
 
         response = self.nlp_client.prompt(
             # TODO: use self.remove_internal_comments on text input too?
@@ -787,7 +763,6 @@ class NLPHandler(object):
 
 def main():
     import argparse
-    from ai_adventurer import config
 
     parser = argparse.ArgumentParser(
         description="Run the NLP client directly, for debugging"
@@ -842,10 +817,10 @@ def main():
 
     configuration = config.load_config(args.config_file, args)
     secrets = config.load_secrets(args.secrets_file)
-    modelname = configuration["DEFAULT"]["nlp_model"]
+    modelname = configuration["nlp"]["model"]
 
     logger.debug("Starting NLP debug client")
-    nlp = NLPHandler(modelname, secrets=secrets)
+    nlp = NLPHandler(modelname, secrets=secrets, config=configuration)
 
     def prompt(text, instructions=None):
         print(nlp.prompt(text, instructions=instructions))

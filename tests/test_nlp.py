@@ -24,6 +24,10 @@ def get_fake_secrets():
     return config._get_default_secrets()
 
 
+def get_fake_config():
+    return config._get_default_config()
+
+
 def test_all_online_models_load_with_fake_auth():
     secrets = get_fake_secrets()
     for modelname in nlp.nlp_models:
@@ -34,19 +38,19 @@ def test_all_online_models_load_with_fake_auth():
 
 
 def test_load_handler():
-    nlp.NLPHandler('mock', get_fake_secrets())
+    nlp.NLPHandler('mock', get_fake_secrets(), get_fake_config())
 
 
 def test_load_handler_online_notauthenticated():
     with pytest.raises(nlp.NotAuthenticatedError):
-        nlp.NLPHandler('mock-online', get_fake_secrets())
+        nlp.NLPHandler('mock-online', get_fake_secrets(), get_fake_config())
 
 
 def test_load_handler_online():
     secrets = get_fake_secrets()
     mock_class = nlp.get_nlp_class('mock-online')
     secrets['DEFAULT'][mock_class.secrets_api_key_name] = 'fake-API-key'
-    nlp.NLPHandler('mock-online', secrets)
+    nlp.NLPHandler('mock-online', secrets, get_fake_config())
 
 
 def get_mock_handler():
@@ -54,7 +58,7 @@ def get_mock_handler():
     secrets = get_fake_secrets()
     mock_class = nlp.get_nlp_class('mock-online')
     secrets['DEFAULT'][mock_class.secrets_api_key_name] = 'fake-API-key'
-    return nlp.NLPHandler('mock-online', secrets)
+    return nlp.NLPHandler('mock-online', secrets, get_fake_config())
 
 
 def test_base_prompt():
@@ -168,7 +172,7 @@ def test_handler_autosummarize(tmp_path, mocker):
 
 def test_remove_internal_comments():
     handler = get_mock_handler()
-    prompt = ("% This is internal and shall not pass!"
+    prompt = ("§ This is internal and shall not pass!"
               + "\n"
               + "But this should")
     cleaned = handler.remove_internal_comments(prompt)

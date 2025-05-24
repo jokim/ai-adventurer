@@ -24,16 +24,22 @@ def get_mock_controller():
 def test_gamecontroller_load():
     run.GameController(db=db.MockDatabase(),
                        nlp=nlp.NLPHandler("mock",
-                                          config._get_default_secrets()),
+                                          config._get_default_secrets(),
+                                          config._get_default_config()),
                        gui=gui_urwid.GUI(),
+                       config=config._get_default_config(),
                        controller=get_mock_controller())
 
 
 def get_mock_gamecontroller():
     return run.GameController(
         db=db.MockDatabase(),
-        nlp=nlp.NLPHandler("mock", config._get_default_secrets()),
+        nlp=nlp.NLPHandler("mock",
+                           config._get_default_secrets(),
+                           config._get_default_config()
+                           ),
         gui=gui_urwid.GUI(),
+        config=config._get_default_config(),
         controller=get_mock_controller()
     )
 
@@ -70,7 +76,7 @@ def get_mock_handler():
     secrets = get_fake_secrets()
     mock_class = nlp.get_nlp_class('mock-online')
     secrets['DEFAULT'][mock_class.secrets_api_key_name] = 'fake-API-key'
-    return nlp.NLPHandler('mock-online', secrets)
+    return nlp.NLPHandler('mock-online', secrets, config._get_default_config())
 
 
 # Game object (model)
