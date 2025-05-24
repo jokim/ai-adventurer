@@ -688,7 +688,12 @@ class NLPHandler(object):
             prompt.append(game.summary_ai)
 
         prompt.append("\n---\n<THE-STORY>:\n")
-        prompt.extend(game.lines[game.summary_ai_until_line:])
+        startline = game.summary_ai_until_line
+        # Make sure that the story contains a few lines:
+        if startline > len(game.lines) - 5:
+            startline = max(0, startline - 5)
+
+        prompt.extend(game.lines[startline:])
         prompt.append("\n\n</THE-STORY>")
         return prompt
 
