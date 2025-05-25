@@ -744,9 +744,9 @@ class NLPHandler(object):
         @return: A few sentences, from the AI.
 
         """
-        prompt = ["""Generate a detailed summary of the given story, in %d
-                     characters. Ignore info that isn't important later for the
-                     story, but keep details that might be important later."""
+        prompt = ["""Generate a detailed, but compressed summary of the given
+                     story, in max %d characters. Focus on details that could
+                     be important later in the story."""
                   % self.limit_autosummary_characters]
         # TODO: include the summary, if generated, before the next part of the
         # story, from summary_ai_until_line

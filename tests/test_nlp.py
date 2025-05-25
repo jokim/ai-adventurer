@@ -164,11 +164,34 @@ def test_handler_autosummarize(tmp_path, mocker):
     spy = mocker.spy(handler, "prompt_for_ai_summary")
 
     ret = handler.prompt_for_next_lines(game)
-    spy.assert_called_once()
     assert ret
+    spy.assert_called_once()
+    assert game.summary_ai
 
 
-# TODO: Test the handler more
+def test_handler_autosummarize_continously(tmp_path, mocker):
+    game = get_mock_gameobj(tmp_path)
+    game.add_lines("Test1.")
+    game.add_lines("Test2.")
+    game.add_lines("Test3.")
+
+    handler = get_mock_handler()
+    handler.limit_story_prompt_characters = 2
+    spy = mocker.spy(handler, "prompt_for_ai_summary")
+    handler.prompt_for_next_lines(game)
+    spy.assert_called_once()
+    mocker.stop(spy)
+    assert game.summary_ai != ""
+    prev_ai_line = game.summary_ai_until_line
+
+    game.add_lines("Test4.")
+    game.add_lines("Test5.")
+    game.add_lines("Test6.")
+    spy = mocker.spy(handler, "prompt_for_ai_summary")
+    handler.prompt_for_next_lines(game)
+    spy.assert_called_once()
+    assert game.summary_ai_until_line > prev_ai_line
+
 
 def test_remove_internal_comments():
     handler = get_mock_handler()

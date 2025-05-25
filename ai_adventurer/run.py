@@ -369,9 +369,11 @@ class Game(object):
         self.summary = cleanup_text(new_summary).strip()
         self.save()
 
-    def set_summary_ai(self, new_summary):
+    def set_summary_ai(self, new_summary, at_line=None):
         self.summary_ai = cleanup_text(new_summary).strip()
-        self.summary_ai_until_line = len(self.lines)
+        if at_line is None:
+            at_line = len(self.lines)
+        self.summary_ai_until_line = at_line
         self.save()
 
     def add_lines(self, text):
@@ -407,6 +409,10 @@ class Game(object):
         self.max_token_input = oldgame.max_token_input
         self.max_token_output = oldgame.max_token_output
         self.save()
+
+    def count_characters(self) -> int:
+        """Return the number of characters in this story"""
+        return sum(len(x) for x in self.lines)
 
 
 def main():
