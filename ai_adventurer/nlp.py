@@ -32,6 +32,34 @@ class TimeoutException(Exception):
     pass
 
 
+class ResponseUsage(object):
+    """Data from a prompt response, standardized"""
+
+    def __init__(self, input_tokens: int, output_tokens: int,
+                 response_time: float = None):
+        """Store response details.
+
+        @param input_tokens: Number of tokens from the request.
+
+        @param output_tokens: Number of tokens returned
+
+        @param response_time:
+            Unix timestamp for the request. Defaults to `now`.
+
+        """
+        self.input_tokens = input_tokens
+        self.output_tokens = output_tokens
+        self.total_tokens: int = input_tokens + output_tokens
+        if response_time:
+            self.response_time = response_time
+        else:
+            self.response_time = time.time()
+
+    def __str__(self):
+        return "ResponseUsage: {} input tokens, {} output tokens".format(
+            self.input_tokens, self.output_tokens)
+
+
 class NLPClient(object):
     """The general NLP client functionality.
 
@@ -58,6 +86,7 @@ class NLPClient(object):
             self.max_tokens_input = max_tokens_input
         else:
             self.max_tokens_input = self.default_max_tokens_input
+        self.last_response = None
 
     def prompt(self, text=None, instructions=None, max_tokens_output=None):
         """Subclass for the specifig NLP generation.
@@ -80,6 +109,8 @@ class NLPClient(object):
 
         """
         enc = tiktoken.get_encoding("o200k_base")
+        if isinstance(text, (list, tuple)):
+            text = "\n".join(text)
         return len(enc.encode(text))
 
 
@@ -102,6 +133,8 @@ class MockNLPClient(NLPClient):
 
         response = random.choice(self.replies)
         logger.debug("Prompt response: %s", response)
+        self.last_response = ResponseUsage(self.count_tokens(text),
+                                           self.count_tokens(response))
         return response
 
 
@@ -187,6 +220,8 @@ class HuggingfaceNLPClient(NLPClient):
 
         logger.debug("Returned answer: %s", output)
         logger.debug("Time elapsed: %.2f seconds", end - start)
+        # TODO: get tokens and add:
+        self.last_response = ResponseUsage()
         return output
 
 
@@ -311,6 +346,10 @@ class OpenAINLPClient(OnlineNLPClient):
         )
         logger.debug("Response time: %.3f", time.time() - starttime)
         logger.debug("Prompt response: %s", answer)
+        self.last_response = ResponseUsage(answer.usage.prompt_tokens,
+                                           answer.usage.completion_tokens,
+                                           answer.created)
+        self.last_response.total_tokens = answer.usage.total_tokens
         answer = answer.choices[0].message.content
         return answer
 
@@ -395,6 +434,11 @@ class GeminiNLPClient(OnlineNLPClient):
         )
         logger.debug("Response time: %.3f", time.time() - starttime)
         logger.debug("Token usage: %s", response.usage_metadata)
+
+        usage = response.usageMetadata
+        self.last_response = ResponseUsage(usage.promptTokenCount,
+                                           usage.candidatesTokenCount)
+        self.last_response.total_tokens = usage.totalTokenCount
         try:
             answer = response.text
         except ValueError:
@@ -500,6 +544,9 @@ class MistralNLP(OnlineNLPClient):
             raise TimeoutException(e)
 
         logger.debug("Token usage: %r", response.usage)
+        self.last_response = ResponseUsage(response.usage.prompt_tokens,
+                                           response.usage.completion_tokens,
+                                           response_time=response.created)
         answer = response.choices[0].message.content
         logger.debug("Prompt response: %s", answer)
         return answer
@@ -764,6 +811,9 @@ class NLPHandler(object):
     def count_tokens(self, game):
         """Count the number of tokens in the story."""
         return self.nlp_client.count_tokens("\n".join(game.lines))
+
+    def get_last_usage(self) -> ResponseUsage:
+        return self.nlp_client.last_response
 
 
 def main():
