@@ -119,11 +119,11 @@ class GUI(object):
     def set_body(self, body, footer=True):
         self.loop.widget = self._generate_body(body=body, footer=footer)
 
-    def load_game(self, game, choices):
+    def load_game(self, game, choices, nlphandler=None):
         """Change the viewer to the game window"""
         self.event_reset.set()
         self.set_header(game.title)
-        self.meta_box = MetaStoryBox(game=game)
+        self.meta_box = MetaStoryBox(game=game, nlphandler=nlphandler)
         self.story_box = StoryBox(game=game, choices=choices,
                                   metadatabox=self.meta_box)
         # TODO: When adding the ScrollBar, I got out of bounds exceptions from
@@ -506,14 +506,26 @@ class StoryBox(urwid.Scrollable):
 class MetaStoryBox(urwid.ListBox):
     """A view of metadata about a given game."""
 
-    def __init__(self, game):
+    def __init__(self, game, nlphandler=None):
         self.game = game
+        self.nlphandler = nlphandler
         super().__init__([])
         self.update_view()
 
     def update_view(self):
         """Refill the view with updated metadata"""
         self.body.clear()
+
+        if self.nlphandler:
+            usage, last = self.nlphandler.get_usage()
+            self.body.append(urwid.Text([('subtitle', "Total tokens: "),
+                                         f"{usage.input_tokens} in, " +
+                                         f"{usage.output_tokens} out"]))
+            if last:
+                self.body.append(urwid.Text([('subtitle', "Last response: "),
+                                             f"{last.input_tokens} tokens in, " +
+                                             f"{last.output_tokens} tokens out"]))
+
         self.body.append(urwid.Text([('subtitle', "GameID: "),
                                     "%d" % self.game.gameid]))
         self.body.append(urwid.Text([('subtitle', "Title: "),

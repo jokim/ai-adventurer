@@ -201,10 +201,10 @@ class GameController(object):
         title = self.nlp.prompt_for_title(concept)
         self.game.set_title(title)
         self.game.add_lines(self.nlp.prompt_for_introduction(self.game))
-        self.gui.load_game(self.game, self.game_actions)
+        self.gui.load_game(self.game, self.game_actions, self.nlp)
 
     def load_game(self):
-        self.gui.load_game(self.game, self.game_actions)
+        self.gui.load_game(self.game, self.game_actions, self.nlp)
 
     def next_line(self, widget):
         """Generate new text"""

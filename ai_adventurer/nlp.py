@@ -59,6 +59,17 @@ class ResponseUsage(object):
         return "ResponseUsage: {} input tokens, {} output tokens".format(
             self.input_tokens, self.output_tokens)
 
+    def __add__(self, data):
+        """Add one resource with another"""
+        # TBD: what to do with response time? First or last?
+        response_time = max(self.response_time, data.response_time)
+
+        ret = ResponseUsage(self.input_tokens + data.input_tokens,
+                            self.output_tokens + data.output_tokens,
+                            response_time)
+        ret.total_tokens = self.total_tokens + data.total_tokens
+        return ret
+
 
 class NLPClient(object):
     """The general NLP client functionality.
@@ -86,6 +97,7 @@ class NLPClient(object):
             self.max_tokens_input = max_tokens_input
         else:
             self.max_tokens_input = self.default_max_tokens_input
+        self.total_usage = ResponseUsage(0, 0)
         self.last_response = None
 
     def prompt(self, text=None, instructions=None, max_tokens_output=None):
@@ -113,6 +125,10 @@ class NLPClient(object):
             text = "\n".join(text)
         return len(enc.encode(text))
 
+    def set_last_response(self, data):
+        self.total_usage += data
+        self.last_response = data
+
 
 class MockNLPClient(NLPClient):
     """Simulating NLP behaviour"""
@@ -133,8 +149,8 @@ class MockNLPClient(NLPClient):
 
         response = random.choice(self.replies)
         logger.debug("Prompt response: %s", response)
-        self.last_response = ResponseUsage(self.count_tokens(text),
-                                           self.count_tokens(response))
+        self.set_last_response(ResponseUsage(self.count_tokens(text),
+                                             self.count_tokens(response)))
         return response
 
 
@@ -221,7 +237,7 @@ class HuggingfaceNLPClient(NLPClient):
         logger.debug("Returned answer: %s", output)
         logger.debug("Time elapsed: %.2f seconds", end - start)
         # TODO: get tokens and add:
-        self.last_response = ResponseUsage()
+        self.set_last_response(ResponseUsage())
         return output
 
 
@@ -346,10 +362,11 @@ class OpenAINLPClient(OnlineNLPClient):
         )
         logger.debug("Response time: %.3f", time.time() - starttime)
         logger.debug("Prompt response: %s", answer)
-        self.last_response = ResponseUsage(answer.usage.prompt_tokens,
-                                           answer.usage.completion_tokens,
-                                           answer.created)
-        self.last_response.total_tokens = answer.usage.total_tokens
+        usage = ResponseUsage(answer.usage.prompt_tokens,
+                              answer.usage.completion_tokens,
+                              answer.created)
+        usage.total_tokens = answer.usage.total_tokens
+        self.set_last_response(usage)
         answer = answer.choices[0].message.content
         return answer
 
@@ -435,10 +452,11 @@ class GeminiNLPClient(OnlineNLPClient):
         logger.debug("Response time: %.3f", time.time() - starttime)
         logger.debug("Token usage: %s", response.usage_metadata)
 
-        usage = response.usageMetadata
-        self.last_response = ResponseUsage(usage.promptTokenCount,
-                                           usage.candidatesTokenCount)
-        self.last_response.total_tokens = usage.totalTokenCount
+        resp_usage = response.usage_metadata
+        usage = ResponseUsage(resp_usage.prompt_token_count,
+                              resp_usage.candidates_token_count)
+        usage.total_tokens = resp_usage.total_token_count
+        self.set_last_response(usage)
         try:
             answer = response.text
         except ValueError:
@@ -544,9 +562,9 @@ class MistralNLP(OnlineNLPClient):
             raise TimeoutException(e)
 
         logger.debug("Token usage: %r", response.usage)
-        self.last_response = ResponseUsage(response.usage.prompt_tokens,
-                                           response.usage.completion_tokens,
-                                           response_time=response.created)
+        self.set_last_response(ResponseUsage(response.usage.prompt_tokens,
+                                             response.usage.completion_tokens,
+                                             response_time=response.created))
         answer = response.choices[0].message.content
         logger.debug("Prompt response: %s", answer)
         return answer
@@ -812,8 +830,13 @@ class NLPHandler(object):
         """Count the number of tokens in the story."""
         return self.nlp_client.count_tokens("\n".join(game.lines))
 
-    def get_last_usage(self) -> ResponseUsage:
-        return self.nlp_client.last_response
+    def get_usage(self) -> (ResponseUsage, ResponseUsage):
+        """Return two objects of total and last usage.
+
+        The usage is for the current session only. The data is not saved to db.
+
+        """
+        return self.nlp_client.total_usage, self.nlp_client.last_response
 
 
 def main():
