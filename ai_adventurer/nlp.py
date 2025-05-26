@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 # remembers less details. Should probably change this to specify tokens, but
 # this is easier to use, for now.
 # Using the rule of thumb that 1 token ~= 4 characters, for English text.
-default_limit_story_prompt_input_characters = 2000 * 4
+default_limit_story_prompt_input_characters = 4000 * 4
 
 
 class NotAuthenticatedError(Exception):
